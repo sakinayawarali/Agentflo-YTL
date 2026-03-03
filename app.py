@@ -129,7 +129,7 @@ def tasks_tts_send():
 #     handler = RouteHandler(VERIFY_TOKEN) 
 #     return handler.handle_drain_buffer()
 
-def shutdown_handler(signal_int: int, frame: FrameType) -> None:
+def shutdown_handler(signal_int: int, frame: FrameType | None) -> object:
     logger.info("Caught Signal Terminated" if signal_int in (signal.SIGTERM, ) else f"Caught Signal {signal_int}")
     from utils.logging import flush
     flush()

@@ -2048,8 +2048,26 @@ class RouteHandler:
             else:
                 data = request.get_json(silent=True) or {}
                 logger.info("webhook.payload", payload=data)
-                changes = data["entry"][0]["changes"][0]
-                value = changes.get("value", {})
+
+                # Meta/Cloud API webhooks should contain the standard "entry[0].changes[0]" envelope.
+                # When the payload is missing this (e.g. health checks, misrouted requests),
+                # avoid raising a KeyError and just ack with 200.
+                if not isinstance(data, dict) or "entry" not in data:
+                    logger.warning(
+                        "webhook.unexpected_payload",
+                        has_entry=isinstance(data, dict) and "entry" in data,
+                        keys=list(data.keys()) if isinstance(data, dict) else None,
+                    )
+                    return make_response("", 200)
+
+                try:
+                    entry = data.get("entry") or []
+                    changes = (entry[0].get("changes") or [])[0]
+                except Exception as e:
+                    logger.error("webhook.entry_parse_error", error=str(e), payload=data)
+                    return make_response("", 200)
+
+                value = changes.get("value", {}) if isinstance(changes, dict) else {}
 
             # ---- Status updates ----
             if "statuses" in value:
