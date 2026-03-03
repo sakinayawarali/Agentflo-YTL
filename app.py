@@ -48,39 +48,51 @@ def handle_query():
     return {"message": f"Your query was: {query}"}
 
 
+# @app.route("/webhook", methods=["GET", "POST"], strict_slashes=False)
+# def handle_webhook():
+#     route_handler = RouteHandler(VERIFY_TOKEN)
+    
+#     if request.method == "GET":
+#         if route_handler.is_twilio:
+#             # Twilio webhook POST handling
+#             loop = asyncio.new_event_loop()
+#             asyncio.set_event_loop(loop)
+#             try:
+#                 resp = loop.run_until_complete(route_handler.handle_webhook_post())
+#             finally:
+#                 loop.close()
+#         else:
+#             # Regular GET verification
+#             resp = route_handler.handle_webhook_get()
+            
+#     elif request.method == "POST":
+#         # Log the raw payload
+#         payload = request.get_json(silent=True) or {}
+#         logger.info("webhook.payload", payload=payload)
+        
+#         # Run async handler in event loop
+#         loop = asyncio.new_event_loop()
+#         asyncio.set_event_loop(loop)
+#         try:
+#             resp = loop.run_until_complete(route_handler.handle_webhook_post())
+#         finally:
+#             loop.close()
+#     else:
+#         resp = make_response("Method not allowed", 405)
+        
+#     return resp if resp is not None else make_response("", 200)
+
 @app.route("/webhook", methods=["GET", "POST"], strict_slashes=False)
 def webhook():
-    route_handler = RouteHandler(VERIFY_TOKEN)
-    
+    print("WEBHOOK HIT")
+    print(request.method)
+
     if request.method == "GET":
-        if route_handler.is_twilio:
-            # Twilio webhook POST handling
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                resp = loop.run_until_complete(route_handler.handle_webhook_post())
-            finally:
-                loop.close()
-        else:
-            # Regular GET verification
-            resp = route_handler.handle_webhook_get()
-            
-    elif request.method == "POST":
-        # Log the raw payload
-        payload = request.get_json(silent=True) or {}
-        logger.info("webhook.payload", payload=payload)
-        
-        # Run async handler in event loop
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            resp = loop.run_until_complete(route_handler.handle_webhook_post())
-        finally:
-            loop.close()
-    else:
-        resp = make_response("Method not allowed", 405)
-        
-    return resp if resp is not None else make_response("", 200)
+        return request.args.get("hub.challenge", ""), 200
+
+    if request.method == "POST":
+        print(request.get_json())
+        return "", 200
 
 @app.route("/twilio/status", methods=["GET", "POST"], strict_slashes=False)
 def twilio_status():
