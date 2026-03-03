@@ -82,7 +82,6 @@ def webhook():
         
     return resp if resp is not None else make_response("", 200)
 
-
 @app.route("/twilio/status", methods=["GET", "POST"], strict_slashes=False)
 def twilio_status():
     route_handler = RouteHandler(VERIFY_TOKEN)
