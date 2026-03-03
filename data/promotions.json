@@ -1,0 +1,10 @@
+{
+  "promotions": [
+    {
+      "id": "PROMO1",
+      "title": "Bulk order discount",
+      "description": "Orders 20m³ and above get RM15/m³ off",
+      "valid_until": "2025-12-31"
+    }
+  ]
+}

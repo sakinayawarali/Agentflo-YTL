@@ -1,0 +1,142 @@
+name: Deploy ADK Agent to Cloud Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_id:
+        description: 'User ID for deployment'
+        required: true
+        type: string
+      agent_config:
+        description: 'Agent configuration JSON'
+        required: false
+        type: string
+      service_name:
+        description: 'Cloud Run service name'
+        required: false
+        default: 'adk-agent'
+        type: string
+  
+  push:
+    branches:
+      - templates
+
+env:
+  GCP_REGION: us-central1
+  SERVICE_NAME: ${{ github.event.inputs.service_name || 'adk-agent' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+      - name: Checkout templates branch
+        uses: actions/checkout@v4
+        with:
+          ref: templates
+      
+      - name: Set deployment metadata
+        id: metadata
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "trigger=manual" >> $GITHUB_OUTPUT
+            echo "user_id=${{ github.event.inputs.user_id }}" >> $GITHUB_OUTPUT
+          else
+            echo "trigger=push" >> $GITHUB_OUTPUT
+            echo "user_id=auto" >> $GITHUB_OUTPUT
+          fi
+          echo "timestamp=$(date +%s)" >> $GITHUB_OUTPUT
+          echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+      
+      - name: Pre-resolve dependencies
+        run: |
+          pip install pip-tools
+          pip-compile --upgrade --generate-hashes requirements.in
+
+      - name: Build Docker image
+        run: |
+          IMAGE_NAME="${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}"
+          
+          docker build \
+            --build-arg USER_ID="${{ steps.metadata.outputs.user_id }}" \
+            --build-arg BUILD_TIMESTAMP="${{ steps.metadata.outputs.timestamp }}" \
+            -t ${IMAGE_NAME}:${{ steps.metadata.outputs.short_sha }} \
+            -t ${IMAGE_NAME}:latest \
+            .
+          
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+      
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:${{ steps.metadata.outputs.short_sha }}
+          docker push ${{ env.IMAGE_NAME }}:latest
+      
+      - name: Prepare environment variables
+        id: env_vars
+        run: |
+          ENV_VARS="DEPLOYMENT_TRIGGER=${{ steps.metadata.outputs.trigger }}"
+          ENV_VARS="${ENV_VARS},DEPLOYED_AT=${{ steps.metadata.outputs.timestamp }}"
+          ENV_VARS="${ENV_VARS},GIT_SHA=${{ github.sha }}"
+          
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.agent_config }}" ]; then
+            ENV_VARS="${ENV_VARS},AGENT_CONFIG=${{ github.event.inputs.agent_config }}"
+          fi
+          
+          if [ -n "${{ github.event.inputs.user_id }}" ]; then
+            ENV_VARS="${ENV_VARS},USER_ID=${{ github.event.inputs.user_id }}"
+          fi
+          
+          echo "env_vars=${ENV_VARS}" >> $GITHUB_OUTPUT
+      
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ steps.metadata.outputs.short_sha }} \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --allow-unauthenticated \
+            --memory 2Gi \
+            --cpu 2 \
+            --timeout 300 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --set-env-vars "${{ steps.env_vars.outputs.env_vars }}" \
+            --labels "deployed-by=github-actions,trigger=${{ steps.metadata.outputs.trigger }},commit=${{ steps.metadata.outputs.short_sha }}"
+          
+          SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          
+          echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
+          echo "### ✅ Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "**Service URL:** ${SERVICE_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_NAME }}:${{ steps.metadata.outputs.short_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ steps.metadata.outputs.trigger }}" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment completed successfully"
+            echo "Service URL: ${{ steps.deploy.outputs.service_url }}"
+          else
+            echo "❌ Deployment failed"
+          fi

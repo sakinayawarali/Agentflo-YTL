@@ -1,0 +1,68 @@
+{
+  "products": [
+    {
+      "sku_code": "GR20",
+      "sku": "GR20",
+      "product_name": "Grade 20 Concrete",
+      "name": "Grade 20 – General slabs",
+      "official_name": "Grade 20 Concrete",
+      "description": "General purpose concrete for non-structural slabs",
+      "price_per_m3": 280,
+      "base_price": 280,
+      "pricing": { "sell_price": 280, "price_per_m3": 280 },
+      "unit": "m³",
+      "min_order_m3": 5
+    },
+    {
+      "sku_code": "GR25",
+      "sku": "GR25",
+      "product_name": "Grade 25 Concrete",
+      "name": "Grade 25 – Foundations",
+      "official_name": "Grade 25 Concrete",
+      "description": "Standard concrete for house foundations and footings",
+      "price_per_m3": 300,
+      "base_price": 300,
+      "pricing": { "sell_price": 300, "price_per_m3": 300 },
+      "unit": "m³",
+      "min_order_m3": 5
+    },
+    {
+      "sku_code": "GR30",
+      "sku": "GR30",
+      "product_name": "Grade 30 Concrete",
+      "name": "Grade 30 – Structural beams/columns",
+      "official_name": "Grade 30 Concrete",
+      "description": "Structural concrete for beams and columns",
+      "price_per_m3": 320,
+      "base_price": 320,
+      "pricing": { "sell_price": 320, "price_per_m3": 320 },
+      "unit": "m³",
+      "min_order_m3": 5
+    },
+    {
+      "sku_code": "GR40",
+      "sku": "GR40",
+      "product_name": "Grade 40 Concrete",
+      "name": "Grade 40 – High strength",
+      "official_name": "Grade 40 Concrete",
+      "description": "High strength concrete for special applications",
+      "price_per_m3": 380,
+      "base_price": 380,
+      "pricing": { "sell_price": 380, "price_per_m3": 380 },
+      "unit": "m³",
+      "min_order_m3": 5
+    },
+    {
+      "sku_code": "PUMP",
+      "sku": "PUMP",
+      "product_name": "Pump truck (per trip)",
+      "name": "Pump truck – per trip",
+      "official_name": "Pump Truck",
+      "description": "Pump truck for first floor or hard-to-reach areas",
+      "price_per_trip": 150,
+      "base_price": 150,
+      "pricing": { "sell_price": 150, "price_per_trip": 150 },
+      "unit": "trip"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+# --- Frameworks ---
+fastapi
+flask
+functions-framework
+gunicorn
+uvicorn
+
+# --- Google Cloud ---
+google-adk
+google-api-python-client
+google-cloud-aiplatform
+google-cloud-appengine-logging
+google-cloud-audit-log
+google-cloud-bigquery
+google-cloud-logging
+google-cloud-resource-manager
+google-cloud-secret-manager
+google-cloud-speech
+google-cloud-storage
+google-cloud-trace
+google-genai
+google-generativeai
+google-auth
+
+# --- AI / LLM Tools ---
+openai
+groq
+langfuse
+mem0ai
+chromadb
+
+# --- Observability & Telemetry ---
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-exporter-gcp-trace
+openinference-instrumentation
+openinference-instrumentation-google-adk
+structlog
+
+# --- Databases / Backend ---
+supabase
+SQLAlchemy
+
+# --- Utilities ---
+requests
+python-dotenv
+pydantic
+pydantic-settings
+python-multipart
+PyYAML
+tenacity
+watchdog
+fpdf2
+
+# --- Firebase ---
+firebase-admin
+
+# --- Visualization / Misc ---
+graphviz
+shapely
+ffmpeg
+imageio_ffmpeg
