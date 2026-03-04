@@ -1235,6 +1235,50 @@ def _generate_promotions_pdf(promos_sorted: List[Dict[str, Any]]) -> Optional[by
         return None
 
 
+def _generate_order_summary_pdf(order_id: str, summary_text: str) -> Optional[bytes]:
+    """
+    Build a simple, single-page PDF summarizing a concrete order.
+
+    This is intentionally lightweight for the YTL Cement demo:
+    the LLM provides a human-readable summary, and this helper
+    just wraps it into a WhatsApp-shareable PDF.
+    """
+    if not FPDF:
+        return None
+
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.set_fill_color(255, 255, 255)
+        pdf.rect(0, 0, pdf.w, pdf.h, "F")
+        pdf.set_text_color(0, 0, 0)
+
+        # Title
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, "Concrete Order Summary", ln=1)
+
+        # Order id + small subtitle
+        pdf.set_font("Arial", "", 11)
+        if order_id:
+            pdf.cell(0, 8, f"Order #: {order_id}", ln=1)
+        pdf.ln(2)
+
+        # Body text (LLM-generated summary)
+        body = summary_text or ""
+        pdf.set_font("Arial", "", 11)
+        pdf.multi_cell(0, 6, body)
+
+        raw = pdf.output(dest="S")
+        if isinstance(raw, (bytes, bytearray)):
+            return bytes(raw)
+        # fpdf2 may return str; encode exactly once
+        return str(raw).encode("latin-1", errors="ignore")
+    except Exception as e:
+        logger.warning("sales_intel.order_pdf.encode_failed", error=str(e))
+        return None
+
+
 def _send_promotions_pdf_to_whatsapp(user_id: str, pdf_bytes: bytes, filename: str = "promotions.pdf") -> bool:
     """
     Upload and send the promotions PDF via WhatsApp document message.
@@ -1289,31 +1333,90 @@ def _send_promotions_pdf_to_whatsapp(user_id: str, pdf_bytes: bytes, filename: s
             )
             return False
 
-        media_url = f"https://graph.facebook.com/v23.0/{phone_id}/media"
-        messages_url = f"https://graph.facebook.com/v23.0/{phone_id}/messages"
-        headers = {"Authorization": f"Bearer {token}"}
+
+def _send_order_pdf_to_whatsapp(user_id: str, pdf_bytes: bytes, filename: str = "concrete-order.pdf") -> bool:
+    """
+    Upload and send the concrete order PDF via WhatsApp document message.
+    Mirrors the promotions PDF transport handling.
+    """
+    transport = (os.getenv("WHATSAPP_TRANSPORT", "meta") or "meta").strip().lower()
+    if transport == "twilio":
+        if not user_id:
+            logger.warning(
+                "order_pdf.send.skip",
+                have_user=bool(user_id),
+                transport="twilio",
+            )
+            return False
+        try:
+            from agents.helpers.adk_helper import ADKHelper  # lazy import to avoid cycles
+
+            helper = ADKHelper()
+            media_url = helper._twilio_upload_media_bytes(
+                pdf_bytes,
+                "application/pdf",
+            )
+            if not media_url:
+                logger.warning("order_pdf.send.upload_failed", transport="twilio")
+                return False
+
+            sent = helper._twilio_send_media(
+                user_id,
+                media_url,
+                body="Here is your concrete order summary PDF.",
+                content_type="application/pdf",
+            )
+            if sent:
+                logger.info("order_pdf.send.sent", user_id=user_id, transport="twilio")
+                return True
+
+            logger.warning("order_pdf.send.failed", transport="twilio")
+            return False
+        except Exception as e:
+            logger.warning("order_pdf.send.exception", error=str(e), transport="twilio")
+            return False
+
+    elif transport == "meta":
+        phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+        token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+
+        if not (phone_id and token and user_id):
+            logger.warning(
+                "order_pdf.send.skip",
+                have_phone=bool(phone_id),
+                have_token=bool(token),
+                have_user=bool(user_id),
+            )
+            return False
 
         try:
-            upload_resp = requests.post(
-                media_url,
-                headers=headers,
-                data={"messaging_product": "whatsapp"},
-                files={"file": (filename, pdf_bytes, "application/pdf")},
-                timeout=20,
-            )
+            media_url = f"https://graph.facebook.com/v23.0/{phone_id}/media"
+            messages_url = f"https://graph.facebook.com/v23.0/{phone_id}/messages"
+            headers = {"Authorization": f"Bearer {token}"}
+
+            # 1) Upload media
+            files = {
+                "file": ("order.pdf", pdf_bytes, "application/pdf"),
+            }
+            data = {
+                "messaging_product": "whatsapp",
+                "type": "document",
+            }
+            upload_resp = requests.post(media_url, headers=headers, files=files, data=data, timeout=15)
             if upload_resp.status_code not in (200, 201):
                 logger.warning(
-                    "sales_intel.promos.pdf_upload_failed",
+                    "order_pdf.send.upload_failed_meta",
                     status=upload_resp.status_code,
-                    body=upload_resp.text[:300],
+                    text=upload_resp.text[:200],
                 )
                 return False
 
             media_id = (upload_resp.json() or {}).get("id")
             if not media_id:
-                logger.warning("sales_intel.promos.pdf_upload_no_id")
+                logger.warning("order_pdf.send.no_media_id_meta")
                 return False
 
+            # 2) Send document message
             payload = {
                 "messaging_product": "whatsapp",
                 "to": user_id,
@@ -1321,23 +1424,65 @@ def _send_promotions_pdf_to_whatsapp(user_id: str, pdf_bytes: bytes, filename: s
                 "document": {
                     "id": media_id,
                     "filename": filename,
-                    "caption": t("promotions_pdf_caption"),
+                    "caption": "Your concrete order summary.",
                 },
             }
-            send_resp = requests.post(messages_url, headers=headers, json=payload, timeout=20)
-            if send_resp.status_code in (200, 201):
-                logger.info("sales_intel.promos.pdf_sent", user_id=user_id)
+            msg_resp = requests.post(messages_url, headers=headers, json=payload, timeout=15)
+            if msg_resp.status_code in (200, 201):
+                logger.info("order_pdf.send.sent_meta", user_id=user_id)
                 return True
 
             logger.warning(
-                "sales_intel.promos.pdf_send_failed",
-                status=send_resp.status_code,
-                body=send_resp.text[:300],
+                "order_pdf.send.failed_meta",
+                status=msg_resp.status_code,
+                text=msg_resp.text[:200],
             )
             return False
         except Exception as e:
-            logger.warning("sales_intel.promos.pdf_exception", error=str(e))
+            logger.warning("order_pdf.send.exception_meta", error=str(e))
             return False
+
+    else:
+        logger.warning("order_pdf.send.unsupported_transport", transport=transport)
+        return False
+
+
+def send_order_pdf(user_id: str, order_id: str, summary_text: str) -> Dict[str, Any]:
+    """
+    LLM tool: Generate and send a PDF summary of a concrete order.
+
+    Usage (YTL Cement demo):
+    - Call this AFTER you have already confirmed the order details in chat.
+    - Provide:
+        * user_id: WhatsApp user identifier (e.g. "923312167555").
+        * order_id: Human-friendly order number (e.g. "CN-8842").
+        * summary_text: Clear English summary of the order
+          (items, grades, m³, slot, site address/pin, ETA, and any notes).
+
+    Behavior:
+    - Renders summary_text into a simple PDF titled "Concrete Order Summary".
+    - Attempts to send the PDF to the user as a WhatsApp document.
+
+    Returns:
+    - {"ok": bool, "error": Optional[str]}
+    """
+    if not user_id:
+        return {"ok": False, "error": "missing_user_id"}
+
+    if not FPDF:
+        logger.warning("order_pdf.send.missing_fpdf")
+        return {"ok": False, "error": "pdf_engine_unavailable"}
+
+    pdf_bytes = _generate_order_summary_pdf(order_id, summary_text or "")
+    if not pdf_bytes:
+        return {"ok": False, "error": "pdf_generation_failed"}
+
+    filename = f"{order_id or 'order'}-summary.pdf"
+    sent = _send_order_pdf_to_whatsapp(user_id, pdf_bytes, filename=filename)
+    if not sent:
+        return {"ok": False, "error": "send_failed"}
+
+    return {"ok": True, "error": None}
 
 
 def _map_basket_to_order_draft(api_response: Dict[str, Any]) -> Dict[str, Any]:

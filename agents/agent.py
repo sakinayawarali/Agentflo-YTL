@@ -33,7 +33,7 @@ from agents.tools.cart_tools import agentflo_cart_tool
 from agents.runtime_config import load_agent_config
 #from agents.tools.test_recommendation import smart_recommendation_template
 #from agents.tools.promotion_template import promotions_tool
-from agents.tools.sales_intelligence_engine import sales_intelligence_engine
+from agents.tools.sales_intelligence_engine import sales_intelligence_engine, send_order_pdf
 # from agents.tools.product_info_csv_tool import product_info_csv_tool
 from agents.prompt.prompt_creator import get_system_prompt
 from utils.logging import logger
@@ -60,9 +60,8 @@ genai_client = Client(api_key=_GENAI_API_KEY, http_options=_http_opts, vertexai=
 
 TENANT_ID = os.getenv("TENANT_ID", "").strip().lower()
 
-TENANT_TO_BUSINESS = {
-    "ebm": "Peek Freans",
-}
+# For the YTL Cement demo we do not expose any legacy EBM tenant mapping.
+TENANT_TO_BUSINESS: dict[str, str] = {}
 
 def _get_dict(d, k):
     v = d.get(k)
@@ -116,13 +115,10 @@ except Exception as e:
     AGENT_CFG = {}
     logger.error("Failed to load AGENT_CFG from Firestore; using defaults", error=str(e))
 
-# YTL Cement: English-only agent (text + VN). Force EN for ytl or when tenant unset (demo).
-_resolved = _resolve_lang_code(AGENT_CFG)
-_tid = (TENANT_ID or "").strip().lower()
-if _tid == "ytl" or not _tid:
-    PROMPT_LANGUAGE = "EN"
-else:
-    PROMPT_LANGUAGE = _resolved
+# YTL Cement: English-only agent (text + VN). Always use English.
+PROMPT_LANGUAGE = "EN"
+# Ensure downstream template + string dispatchers also see English.
+os.environ["PROMPT_LANGUAGE"] = "EN"
 
 business_context = _get_dict(AGENT_CFG, "businessContext")
 business_name = _pick_str(
@@ -189,6 +185,7 @@ engro_assistant_eleven = LlmAgent(
         # CSV catalog search is intentionally decoupled for now.
         # _guard_tool(product_info_csv_tool),
         _guard_tool(sales_intelligence_engine),
+        _guard_tool(send_order_pdf),
         _guard_tool(confirmOrderDraftTool, name="confirmOrderDraftTool"),
 
         # Templates as callable tools

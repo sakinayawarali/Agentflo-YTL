@@ -8,6 +8,15 @@
       "store_code": "CUST_SAKINA",
       "store_key": "CUST_SAKINA",
       "address": "Demo address for YTL Cement"
+    },
+    {
+      "phone": "923333101568",
+      "user_id": "923333101568",
+      "contact_name": "Hamza Khan",
+      "customer_name": "Hamza Khan",
+      "store_code": "CUST_HAMZA",
+      "store_key": "CUST_HAMZA",
+      "address": "Demo address for YTL Cement"
     }
   ]
 }

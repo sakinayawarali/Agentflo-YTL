@@ -11,7 +11,7 @@ from agents.tools.templates import (
 )
 from utils.logging import logger, debug_enabled
 
-_DEFAULT_COMPANY_NAME = "Peek Freans"
+_DEFAULT_COMPANY_NAME = "YTL Cement"
 
 
 def _resolve_company_name(args: Optional[dict] = None) -> str:
@@ -31,70 +31,23 @@ def _resolve_company_name(args: Optional[dict] = None) -> str:
 def greeting_template(
     user_message: Optional[str] = None,
     customer_name: Optional[str] = None,
-):
+) -> str:
     """
-    Warm, street-smart greeting for the retailer.
-    English version, Ayesha persona.
-    always call send_product_catalogue tool after running this template.
+    YTL Cement demo greeting.
+
+    Always welcome the user in clear English and immediately
+    steer them toward placing a concrete order.
     """
-    company_name = _resolve_company_name()
-    greeting_lines = [
-        "Assalam o Alaikum",
-        "Salam",
-        "Hello",
-    ]
-    salam_lines = [
-        "Wa alaikum assalam",
-        "Waalikum Salam",
-        "Wa alaikum salam",
-    ]
-    hello_lines = [
-        "Hello!",
-        "Hi there!",
-        "Hey!",
-    ]
-    smalltalk_lines = [
-        "How is business going",
-        "How is the shop doing these days",
-        "How are biscuit sales going",
-    ]
-    value_hooks = [
-        f"{company_name} top sellers",
-        f"fresh {company_name} stock",
-        f"best range of {company_name} biscuits and cakes",
-        "fast-moving items in your area",
-    ]
-    help_options = [
-        "Should I help you place an order",
-        "Should I share today's top sellers",
-        "Should I tell you about the new items",
-        "Want to check today's best deals",
-    ]
-    cta_lines = [
-        "Tell me, what would you like to check today",
-        "Which item should we start with today",
-        "Let me know, which product do you want to see first",
-    ]
+    company_name = _resolve_company_name() or "YTL Cement"
 
-    first_name = extract_first_name(customer_name)
-    if first_name:
-        greeting_line = f"Hi {first_name} bhai"
-    else:
-        greeting_line = _smart_greeting_line(user_message, salam_lines, hello_lines, greeting_lines)
-    smalltalk_line = random.choice(smalltalk_lines)
-    value_hook = random.choice(value_hooks)
-    help_line = random.choice(help_options)
-    cta_line = random.choice(cta_lines)
-
-    final_response = (
-        f"{greeting_line},\n"
-        f"{smalltalk_line}?\n"
-        f"I'm Ayesha from {company_name} - {value_hook} are available.\n"
-        f"{help_line}?\n"
-        f"{cta_line}?"
+    # Fixed, WhatsApp-ready greeting for the YTL Cement demo.
+    # Keep this deterministic so the first impression is always the same.
+    greeting = (
+        f"Hi! 👋 Welcome to {company_name} Delivery.\n"
+        "Would you like to place a new concrete order today?"
     )
 
-    return f"{final_response.strip()}"
+    return greeting.strip()
 
 
 # 2) Manual Order Flow

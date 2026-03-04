@@ -4139,7 +4139,7 @@ def send_order_confirmation_flow(user_id: str) -> str:
     if not (WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN and FLOW_ID):
         logger.error("confirm_flow.missing_creds", user_id=user_id)
         return (
-            "Flow settings missing bhai. Aap simple 'haan' se confirm kar sakte hain."
+            "Order confirmation Flow settings are missing. Please confirm your order in chat instead."
         )
 
     # Verify draft exists (Flow will load actual data via data exchange endpoint)
@@ -4178,10 +4178,10 @@ def send_order_confirmation_flow(user_id: str) -> str:
                 "text": "🛒 Your Order Cart"
             },
             "body": {
-                "text": "Review and edit your order below. You can change quantities or remove items."
+                "text": "Review and edit your concrete order below. You can change quantities or remove items."
             },
             "footer": {
-                "text": "Powered by Peek Freans"
+                "text": "Powered by YTL Cement"
             },
             "action": {
                 "name": "flow",
