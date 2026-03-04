@@ -521,7 +521,7 @@ def search_products_by_sku(
             codes = [str(s).strip().upper() for s in (sku_codes or []) if s]
             found = [
                 p for p in data["products"]
-                if (str(p.get("sku_code") or p.get("sku") or "").strip().upper() in codes
+                if (str(p.get("sku_code") or p.get("sku") or "").strip().upper()) in codes
             ]
             payload = {"products": found}
             sanitized = _strip_pricing_fields(payload)
