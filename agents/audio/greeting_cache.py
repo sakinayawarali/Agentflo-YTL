@@ -197,43 +197,48 @@ class GreetingVNCache:
             
             generated = 0
             failed = 0
-            
-            for i in range(to_generate):
+
+            async def _make_variant(i: int) -> bool:
+                nonlocal metadata
                 try:
                     # Generate unique script
                     script = await self._generate_script_with_llm(metadata)
-                    
+
                     # Process through VN pipeline
                     vn_text = self.vn_processor.shape_for_tts(script)
                     vn_text = self.vn_processor.shrink_if_needed(vn_text)
-                    
+
                     # Generate audio
                     audio_bytes, meta = await self._generate_vn(vn_text)
-                    
+
                     if audio_bytes:
                         # Save to cache (this increments variant_count)
                         self._add_variant(user_id, audio_bytes, script, meta)
-                        generated += 1
                         logger.info(
                             "greeting_cache.variant_generated",
                             user_id=user_id,
                             index=current_count + i,
-                            total_so_far=current_count + generated,
                         )
-                    else:
-                        failed += 1
-                        logger.warning("greeting_cache.generation_failed", user_id=user_id)
-                
+                        return True
+                    logger.warning("greeting_cache.generation_failed", user_id=user_id)
+                    return False
                 except Exception as e:
-                    failed += 1
                     logger.error(
                         "greeting_cache.variant_error",
                         user_id=user_id,
                         error=str(e),
                     )
-                
-                # Small delay to avoid rate limits
-                await asyncio.sleep(0.5)
+                    return False
+
+            # Generate variants in parallel to reduce latency.
+            tasks = [asyncio.create_task(_make_variant(i)) for i in range(to_generate)]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for r in results:
+                if r is True:
+                    generated += 1
+                else:
+                    failed += 1
             
             logger.info(
                 "greeting_cache.population_complete",
@@ -419,12 +424,37 @@ class GreetingVNCache:
         _ = metadata  # keep signature stable; script stays generic for cache reuse
 
         # YTL Cement demo: avoid calling Gemini HTTP APIs from Cloud Run.
+        # Instead, reuse the same greeting template used for text, so that
+        # the voice-note greeting matches the on-screen welcome.
         tenant = (os.getenv("TENANT_ID") or "").strip().lower()
         if tenant == "ytl" or not tenant:
-            script = (
-                "Hi, this is Ayesha from YTL Cement. "
-                "I have shared your concrete update as a voice note so you can quickly review it on site."
-            )
+            try:
+                from agents.tools.templates import greeting_template as _greet
+            except Exception:
+                _greet = None  # type: ignore
+
+            customer_name = ""
+            if isinstance(metadata, dict):
+                customer_name = (
+                    metadata.get("customer_name")
+                    or metadata.get("contact_name")
+                    or ""
+                )
+
+            if _greet:
+                try:
+                    script = _greet(customer_name=customer_name)
+                except Exception:
+                    script = (
+                        "Hi! Welcome to YTL Cement — Building Better since 1955. "
+                        "I'm your product assistant here to help you choose the right concrete for your project."
+                    )
+            else:
+                script = (
+                    "Hi! Welcome to YTL Cement — Building Better since 1955. "
+                    "I'm your product assistant here to help you choose the right concrete for your project."
+                )
+
             logger.info("greeting_vn.static_ytl_script", script_preview=script[:80])
             return script
 
