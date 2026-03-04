@@ -3477,6 +3477,97 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
             total_amount=getattr(draft, "total_amount", None),
         )
 
+        # YTL Cement demo: do NOT call any external order API. Instead:
+        # - Build a simple text summary of the order,
+        # - Generate a PDF with send_order_pdf,
+        # - Tell the customer that the PDF has been sent.
+        if (TENANT_ID or "").strip().lower() == "ytl":
+            try:
+                from agents.tools.sales_intelligence_engine import send_order_pdf  # type: ignore
+            except Exception:
+                send_order_pdf = None  # type: ignore
+
+            order_id = f"YTL-{int(time.time())}"
+            lines: List[str] = [
+                f"Order ID: {order_id}",
+                f"Customer (store_code): {store_code}",
+                "",
+                "Items:",
+            ]
+            for item in draft.items:
+                try:
+                    name = item.name or item.sku_code
+                    qty = item.qty
+                    sku = item.sku_code
+                    line = f"- {name} ({sku}) — qty: {qty}"
+                    lines.append(line)
+                except Exception:
+                    continue
+
+            try:
+                total_amount = getattr(draft, "total_amount", None) or getattr(draft, "grand_total", None)
+            except Exception:
+                total_amount = None
+            if total_amount is not None:
+                lines.append("")
+                lines.append(f"Approximate demo total: {total_amount}")
+
+            summary_text = "\n".join(lines)
+
+            pdf_ok = False
+            if send_order_pdf:
+                try:
+                    result = send_order_pdf(user_id, order_id, summary_text)  # type: ignore
+                    pdf_ok = bool(result.get("ok"))
+                except Exception as e:
+                    logger.warning("ytl_demo.order_pdf.failed", user_id=user_id, error=str(e))
+
+            # Store order snapshot in Firestore under the user's document
+            try:
+                order_doc = _user_ref(user_id).collection("orders").document(order_id)
+                order_payload = {
+                    "order_id": order_id,
+                    "store_code": store_code,
+                    "created_at": datetime.datetime.utcnow().isoformat() + "Z",
+                    "items": [
+                        {
+                            "sku_code": item.sku_code,
+                            "name": item.name,
+                            "qty": item.qty,
+                        }
+                        for item in draft.items
+                    ],
+                    "total_amount": getattr(draft, "total_amount", None) or getattr(draft, "grand_total", None),
+                    "status": "demo_captured",
+                }
+                order_doc.set(order_payload, merge=True)
+                _po_print("ytl_demo.order_stored", order_path=order_doc.path)
+            except Exception as e:
+                logger.warning("ytl_demo.order_store_failed", user_id=user_id, error=str(e))
+
+            # Best-effort: clear the draft so subsequent orders start clean
+            try:
+                clear_ok = delete_order_draft(user_id, store_id=store_code)
+                _po_print("ytl_demo.draft.clear", success=clear_ok)
+            except Exception as e:
+                logger.warning("ytl_demo.order_draft_clear_failed", user_id=user_id, error=str(e))
+
+            if pdf_ok:
+                confirmation_text = (
+                    "Your demo order has been captured. ✅\n\n"
+                    "I’m sending you a PDF with your order details now on WhatsApp. "
+                    "Please review it and share it with your YTL representative if you’d like to proceed in real life."
+                )
+            else:
+                confirmation_text = (
+                    "Your demo order has been captured, but I could not generate the PDF right now. "
+                    "Please take a screenshot of this chat as your reference."
+                )
+
+            logger.info("place_order.completed_ytl_demo", user_id=user_id, order_id=order_id, pdf_ok=pdf_ok)
+            _po_print("completed_ytl_demo", confirmation_text=confirmation_text)
+            return confirmation_text
+
         # 4. Format the 'CreateOrder' payload (USING YOUR SCHEMA)
         # New API: use SKUQty (not SKUQtyUnits)
         items_list = [
