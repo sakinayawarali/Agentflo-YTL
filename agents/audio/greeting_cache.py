@@ -63,6 +63,22 @@ class GreetingVNCache:
         else:
             raise RuntimeError("VoiceNoteProcessor not available - cannot create GreetingVNCache")
 
+        # YTL-specific tuning: reduce greeting variants to lower first-hit latency and memory.
+        # Uses TENANT_ID/YTL_GREETING_VN_MAX_VARIANTS to keep the change tenant-scoped.
+        tenant_env = (os.getenv("TENANT_ID") or "").strip().lower()
+        if (self.tenant_id or "").lower() == "ytl" or tenant_env == "ytl":
+            try:
+                max_variants = int(os.getenv("YTL_GREETING_VN_MAX_VARIANTS", "1"))
+            except Exception:
+                max_variants = 1
+            # Override instance-level MAX_VARIANTS so other tenants remain unchanged.
+            self.MAX_VARIANTS = max(1, max_variants)
+            logger.info(
+                "greeting_cache.ytl_config_applied",
+                tenant_id=self.tenant_id,
+                max_variants=self.MAX_VARIANTS,
+            )
+
         self._send_audio_func = send_audio_func
         self._get_metadata = get_metadata_func or (lambda user_id: {})
     
@@ -158,6 +174,7 @@ class GreetingVNCache:
         """
         Populate greeting cache with MAX_VARIANTS greeting VNs.
         """
+        start_ts = time.perf_counter()
         try:
             meta_ref = self._user_cache_meta_ref(user_id)
             meta_doc = meta_ref.get()
@@ -198,7 +215,13 @@ class GreetingVNCache:
                     max_batch = 2
                 to_generate = min(to_generate, max_batch)
             if to_generate <= 0:
-                logger.info("greeting_cache.already_full", user_id=user_id, count=current_count)
+                elapsed = time.perf_counter() - start_ts
+                logger.info(
+                    "greeting_cache.already_full",
+                    user_id=user_id,
+                    count=current_count,
+                    elapsed_sec=round(elapsed, 2),
+                )
                 return {"generated": 0, "skipped": self.MAX_VARIANTS, "failed": 0}
             
             # Get metadata for personalization
@@ -249,12 +272,16 @@ class GreetingVNCache:
                 else:
                     failed += 1
             
+            elapsed = time.perf_counter() - start_ts
             logger.info(
                 "greeting_cache.population_complete",
                 user_id=user_id,
                 generated=generated,
                 failed=failed,
                 total_variants=current_count + generated,
+                elapsed_sec=round(elapsed, 2),
+                started_with=current_count,
+                attempted=to_generate,
             )
             
             return {
@@ -264,7 +291,13 @@ class GreetingVNCache:
             }
         
         except Exception as e:
-            logger.error("greeting_cache.populate_error", user_id=user_id, error=str(e))
+            elapsed = time.perf_counter() - start_ts
+            logger.error(
+                "greeting_cache.populate_error",
+                user_id=user_id,
+                error=str(e),
+                elapsed_sec=round(elapsed, 2),
+            )
             return {"generated": 0, "skipped": 0, "failed": to_generate}
     
     # ========================================================================

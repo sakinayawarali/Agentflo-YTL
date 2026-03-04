@@ -7,6 +7,7 @@ Consolidates:
 import asyncio
 import os
 import re
+import time
 from typing import Optional
 
 from utils.logging import logger
@@ -38,6 +39,14 @@ class VoiceNoteProcessor:
         self.tts_max_chars = int(os.getenv("TTS_MAX_CHARS", "150000"))
         self.enable_llm_reformat = os.getenv("VN_LLM_REFORMAT_ENABLED", "true").lower() == "true"
 
+        # YTL-specific config: disable Gemini reformatting by default to avoid extra latency
+        # and memory usage on the Cloud Run demo. This is opt-out via YTL_VN_LLM_REFORMAT_ENABLED=true.
+        tenant = (os.getenv("TENANT_ID") or "").strip().lower()
+        if tenant == "ytl" and os.getenv("YTL_VN_LLM_REFORMAT_ENABLED", "false").lower() != "true":
+            if self.enable_llm_reformat:
+                logger.info("vn_processor.ytl_config_applied", tenant=tenant, llm_reformat_enabled=False)
+            self.enable_llm_reformat = False
+
         # Always target the Google AI Studio endpoint with an API key (non-Vertex path)
         self.api_key = (
             os.getenv("GEMINI_API_KEY")
@@ -48,7 +57,7 @@ class VoiceNoteProcessor:
 
         if genai_client:
             self.client = genai_client
-        elif genai and self.api_key:
+        elif genai and self.api_key and self.enable_llm_reformat:
             http_opts_cls = getattr(types, "HttpOptions", None)
             http_opts = http_opts_cls(
                 baseUrl="https://generativelanguage.googleapis.com",
@@ -243,15 +252,22 @@ class VoiceNoteProcessor:
         if not raw_text:
             return ""
 
+        start_ts = time.perf_counter()
+        llm_used = False
+
         text = self.clean_system_phrases(raw_text)
         
         # Step 1: LLM reformat (keeps numbers as digits per rule 4)
         if self.enable_llm_reformat and self.client:
-            reformatted = await asyncio.to_thread(
-                self._reformat_text_llm, text, customer_name, store_name, is_roman, lang_code
-            )
-            if reformatted:
-                text = reformatted
+            try:
+                reformatted = await asyncio.to_thread(
+                    self._reformat_text_llm, text, customer_name, store_name, is_roman, lang_code
+                )
+                if reformatted:
+                    text = reformatted
+                    llm_used = True
+            except Exception as e:
+                logger.error("vn_processor.build_vn_text.llm_error", error=str(e))
         
         # Step 2: Pattern-based formatting FIRST (needs digits to match)
         text = self.shape_for_tts(text)   # ← × qty = total patterns
@@ -259,6 +275,18 @@ class VoiceNoteProcessor:
         # Step 3: Convert remaining bare digits to Urdu words LAST
         text = self._shape_text_for_tts(text)  # ← number_to_urdu_words
         
+        elapsed = time.perf_counter() - start_ts
+        try:
+            logger.info(
+                "vn_processor.build_vn_text.timing",
+                latency_sec=round(elapsed, 2),
+                text_len=len(raw_text or ""),
+                llm_used=llm_used,
+            )
+        except Exception:
+            # Logging should never break VN generation.
+            pass
+
         return text
     # ========================================================================
     # STEP 3: LANGUAGE-SPECIFIC LLM REFORMAT
