@@ -17,10 +17,12 @@ CUSTOMER_NAME_API_URL = f"{API_BASE_URL}/customers/name"
 PRODUCT_SKU_API_URL = f"{API_BASE_URL}/products/sku"
 PRODUCT_SEMANTIC_SEARCH_API_URL = f"{API_BASE_URL}/products/search"
 
-# --- Authentication ---
-# Fetch the JWT token from an environment variable
+TENANT_ID = (os.environ.get("TENANT_ID") or "").strip().lower()
+
+# --- Authentication (disabled for YTL demo) ---
+# For YTL we do not use EBM APIs or JWT auth at all.
 API_JWT_TOKEN = os.environ.get("API_JWT_TOKEN")
-AGENT_ID=os.environ.get("AGENT_ID")
+AGENT_ID = os.environ.get("AGENT_ID")
 
 # --- Invoice Verification ---
 INVOICE_VERIFY_URL = os.environ.get("INVOICE_VERIFY_URL")
@@ -32,8 +34,11 @@ if not INVOICE_VERIFY_URL:
 # Fields to strip from product/pricing payloads before returning to the agent
 EXCLUDED_PRICING_KEYS = {"total_sell_price_virtual_pack", "retailer_profit_margin"}
 
-# --- YTL demo: use dummy data when no EBM API auth (no user authentication) ---
-USE_LOCAL_DATA = os.environ.get("USE_LOCAL_DATA", "").strip().lower() in ("1", "true", "yes")
+# --- YTL demo: always use dummy data (no EBM APIs, no user authentication) ---
+USE_LOCAL_DATA = (
+    TENANT_ID == "ytl"
+    or os.environ.get("USE_LOCAL_DATA", "").strip().lower() in ("1", "true", "yes")
+)
 
 
 def _data_dir() -> str:
