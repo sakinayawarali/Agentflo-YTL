@@ -3477,16 +3477,10 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
             total_amount=getattr(draft, "total_amount", None),
         )
 
-        # YTL Cement demo: do NOT call any external order API. Instead:
-        # - Build a simple text summary of the order,
-        # - Generate a PDF with send_order_pdf,
-        # - Tell the customer that the PDF has been sent.
+        # YTL Cement: do NOT call any external order API.
+        # For now we also skip PDF generation and just store the order
+        # snapshot in Firestore and return a clear confirmation message.
         if (TENANT_ID or "").strip().lower() == "ytl":
-            try:
-                from agents.tools.sales_intelligence_engine import send_order_pdf  # type: ignore
-            except Exception:
-                send_order_pdf = None  # type: ignore
-
             order_id = f"YTL-{int(time.time())}"
             lines: List[str] = [
                 f"Order ID: {order_id}",
@@ -3512,16 +3506,6 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                 lines.append("")
                 lines.append(f"Approximate demo total: {total_amount}")
 
-            summary_text = "\n".join(lines)
-
-            pdf_ok = False
-            if send_order_pdf:
-                try:
-                    result = send_order_pdf(user_id, order_id, summary_text)  # type: ignore
-                    pdf_ok = bool(result.get("ok"))
-                except Exception as e:
-                    logger.warning("ytl_demo.order_pdf.failed", user_id=user_id, error=str(e))
-
             # Store order snapshot in Firestore under the user's document
             try:
                 order_doc = _user_ref(user_id).collection("orders").document(order_id)
@@ -3538,7 +3522,7 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                         for item in draft.items
                     ],
                     "total_amount": getattr(draft, "total_amount", None) or getattr(draft, "grand_total", None),
-                    "status": "demo_captured",
+                    "status": "captured",
                 }
                 order_doc.set(order_payload, merge=True)
                 _po_print("ytl_demo.order_stored", order_path=order_doc.path)
@@ -3552,19 +3536,13 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
             except Exception as e:
                 logger.warning("ytl_demo.order_draft_clear_failed", user_id=user_id, error=str(e))
 
-            if pdf_ok:
-                confirmation_text = (
-                    "Your demo order has been captured. ✅\n\n"
-                    "I’m sending you a PDF with your order details now on WhatsApp. "
-                    "Please review it and share it with your YTL representative if you’d like to proceed in real life."
-                )
-            else:
-                confirmation_text = (
-                    "Your demo order has been captured, but I could not generate the PDF right now. "
-                    "Please take a screenshot of this chat as your reference."
-                )
+            confirmation_text = (
+                "Your order has been captured successfully. ✅\n\n"
+                "You’ll now receive your order details here in chat. "
+                "Please review them carefully and share this summary with your YTL representative if you’d like to proceed."
+            )
 
-            logger.info("place_order.completed_ytl_demo", user_id=user_id, order_id=order_id, pdf_ok=pdf_ok)
+            logger.info("place_order.completed_ytl", user_id=user_id, order_id=order_id)
             _po_print("completed_ytl_demo", confirmation_text=confirmation_text)
             return confirmation_text
 

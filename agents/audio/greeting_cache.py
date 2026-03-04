@@ -188,6 +188,15 @@ class GreetingVNCache:
             
             # Calculate how many to generate
             to_generate = self.MAX_VARIANTS - current_count
+
+            # For YTL demo on Cloud Run (512MiB), avoid spawning too many
+            # heavy TTS calls in parallel. Cap the batch size per populate call.
+            if (self.tenant_id or "").lower() == "ytl":
+                try:
+                    max_batch = int(os.getenv("YTL_GREETING_VN_BATCH", "2"))
+                except Exception:
+                    max_batch = 2
+                to_generate = min(to_generate, max_batch)
             if to_generate <= 0:
                 logger.info("greeting_cache.already_full", user_id=user_id, count=current_count)
                 return {"generated": 0, "skipped": self.MAX_VARIANTS, "failed": 0}
@@ -593,7 +602,15 @@ Requirements:
         try:
             is_voice = meta.get("is_voice", True)
             is_mp3 = meta.get("is_mp3", False)
-            
+
+            logger.info(
+                "greeting_vn.send_start",
+                user_id=user_id,
+                bytes=len(audio_bytes) if audio_bytes else 0,
+                voice=is_voice,
+                mp3=is_mp3,
+            )
+
             sent = await self._send_audio_func(
                 user_id,
                 audio_bytes,
@@ -602,7 +619,8 @@ Requirements:
                 meta=meta,
                 reply_to_message_id=reply_to_message_id,
             )
-            
+
+            logger.info("greeting_vn.send_result", user_id=user_id, sent=bool(sent))
             return bool(sent)
             
         except Exception as e:
