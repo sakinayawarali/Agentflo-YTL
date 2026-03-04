@@ -194,8 +194,9 @@ EMOTION_TAGS = {
 }
 
 ACCENT_TAGS = {
-    "pakistani": "[with a strong Pakistani accent]",
-    "indian": "[with a strong Indian accent]",
+    # YTL Cement demo: keep accent neutral for English VNs.
+    "pakistani": "",
+    "indian": "",
     "neutral": "",
 }
 
@@ -211,7 +212,7 @@ def maybe_add_breaths(text: str, level: str = "off") -> str:
 def apply_audio_tags(
     text: str,
     emotion: str = "friendly",
-    accent: str = "pakistani",
+    accent: str = "neutral",
     add_breaths: str = "off",
     whisper: bool = False,
     emphasis: bool = False,
@@ -528,7 +529,7 @@ def synthesize_elevenlabs_parallel(
     extra_aliases: Optional[Dict[str, str]] = None,
     pronunciation_dict_ids: Optional[List[str]] = None,
     emotion: str = "friendly",
-    accent: str = "pakistani",
+    accent: str = "neutral",
     breaths: str = "off",
     whisper: bool = False,
     emphasis: bool = False,
@@ -732,7 +733,7 @@ class TTSGenerator:
         voice_id: Optional[str] = None,
         model_id: Optional[str] = None,
         emotion: str = "friendly",
-        accent: str = "pakistani",
+        accent: str = "neutral",
         breaths: str = "off",
         **kwargs
     ) -> Tuple[Optional[bytes], dict, Optional[bytes]]:
