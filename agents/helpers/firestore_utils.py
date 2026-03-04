@@ -16,11 +16,11 @@ def get_tenant_id(default: str = "ebm") -> str:
 def get_agent_id() -> str:
     """
     Return the agent_id to use for Firestore paths.
-    This MUST be provided via AGENT_ID in the environment.
+    Defaults to "ytl-demo" when AGENT_ID is unset (YTL demo, no EBM config required).
     """
     agent_id = (os.getenv("AGENT_ID") or "").strip()
     if not agent_id:
-        raise RuntimeError("Missing AGENT_ID environment variable for Firestore paths")
+        return "ytl-demo"
     return agent_id
 
 

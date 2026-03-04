@@ -1,8 +1,8 @@
 {
-  "VN_LANGUAGE_MODE": "EN",              
+  "VN_LANGUAGE_MODE": "EN",
   "VN_REGION_CULTURE_PACK": "EN_VN_v1",
   "VN_AGENT_NAME": "Ayesha",
-  "VN_BRAND_NAME": "Peek Freans",
+  "VN_BRAND_NAME": "YTL Cement",
   "VN_MAX_SENTENCES": 5,
-  "VN_SUMMARY_MODE": "order_summary"    
+  "VN_SUMMARY_MODE": "order_summary"
 }

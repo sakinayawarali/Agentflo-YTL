@@ -1,6 +1,7 @@
+import re
 import requests
 import json
-import os  # <-- Added import
+import os
 import time
 from typing import Optional, Dict, Any, List, Tuple
 from utils.logging import logger, debug_enabled
@@ -30,6 +31,54 @@ if not INVOICE_VERIFY_URL:
 
 # Fields to strip from product/pricing payloads before returning to the agent
 EXCLUDED_PRICING_KEYS = {"total_sell_price_virtual_pack", "retailer_profit_margin"}
+
+# --- YTL demo: use dummy data when no EBM API auth (no user authentication) ---
+USE_LOCAL_DATA = os.environ.get("USE_LOCAL_DATA", "").strip().lower() in ("1", "true", "yes")
+
+
+def _data_dir() -> str:
+    """Path to data folder (project root / data)."""
+    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return os.path.join(base, "data")
+
+
+def _load_local_json(filename: str) -> Any:
+    path = os.path.join(_data_dir(), filename)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _normalize_phone_digits(phone: str) -> str:
+    return re.sub(r"\D", "", str(phone or "")) if phone else ""
+
+
+def _customer_payload_from_dummy(c: dict, phone: str) -> dict:
+    """Shape expected by adk_helper _bootstrap_user_from_api and _fetch_customer_metadata."""
+    store = (c.get("store_code") or c.get("store_key") or "DEMO").strip()
+    name = (c.get("contact_name") or c.get("customer_name") or "Customer").strip()
+    uid = (c.get("user_id") or c.get("phone") or phone).strip()
+    return {
+        "success": True,
+        "user_id": uid,
+        "id": uid,
+        "customer_id": uid,
+        "store_code": store,
+        "store_key": store,
+        "contact_name": name,
+        "customer_name": name,
+        "additional_info": {"storecode": store},
+        "data": {
+            "store_key": store,
+            "contact_name": name,
+            "customer_name": name,
+            "additional_info": {"storecode": store},
+        },
+    }
 
 
 def _strip_pricing_fields(obj: Any) -> Any:
@@ -152,13 +201,8 @@ def _parse_json_response(response: requests.Response) -> Tuple[Optional[Any], Op
 def search_customer_by_phone(phone_number: str) -> Dict[str, Any]:
     """
     Searches for a customer by their phone number and returns their data.
-
-    Args:
-        phone_number (str): The customer's phone number to search for 
-                            (e.g., "925551234567").
-
-    Returns:
-        dict: ToolResponse schema with customer data on success.
+    When USE_LOCAL_DATA is set or API_JWT_TOKEN is not set, uses dummy data from data/customers.json
+    (no EBM API, no user authentication). Unknown numbers get a generic customer so they can talk to the agent.
     """
     system_name = "search_customer_by_phone"
     _log_tool_call(
@@ -166,28 +210,36 @@ def search_customer_by_phone(phone_number: str) -> Dict[str, Any]:
         phone_tail=str(phone_number)[-4:] if phone_number else "",
         phone_len=len(str(phone_number or "")),
     )
-    print(f"--- Tool: Calling Customer API with phone: {phone_number} ---")
-    
-    # --- Auth Change ---
-    if not API_JWT_TOKEN:
-        result = _tool_error(
-            "AUTH_MISSING",
-            "API_JWT_TOKEN environment variable is not set. Authentication is not possible.",
-            False,
-            system_name,
+
+    # YTL demo: use dummy data only (no EBM APIs, no auth)
+    if USE_LOCAL_DATA or not API_JWT_TOKEN:
+        data = _load_local_json("customers.json")
+        norm = _normalize_phone_digits(phone_number)
+        if data and isinstance(data.get("customers"), list):
+            for c in data["customers"]:
+                p = _normalize_phone_digits(c.get("phone") or c.get("user_id") or "")
+                if p and norm and (p == norm or p.endswith(norm[-9:]) or norm.endswith(p[-9:])):
+                    payload = _customer_payload_from_dummy(c, norm or phone_number)
+                    result = _tool_success(payload, system_name)
+                    _log_tool_result(system_name, True)
+                    return result
+        # Unknown number: still allow (no auth) with generic customer
+        payload = _customer_payload_from_dummy(
+            {"store_code": "DEMO", "contact_name": "Customer", "user_id": norm or phone_number},
+            norm or phone_number,
         )
-        _log_tool_result(system_name, False, result.get("error"))
+        result = _tool_success(payload, system_name)
+        _log_tool_result(system_name, True)
         return result
+
     headers = {"Authorization": f"Bearer {API_JWT_TOKEN}"}
-    # --- End Auth Change ---
-    
     try:
         response = requests.get(
-            CUSTOMER_PHONE_API_URL, 
-            headers=headers,  # <-- Added headers
-            params={'phone': phone_number},
+            CUSTOMER_PHONE_API_URL,
+            headers=headers,
+            params={"phone": phone_number},
         )
-        response.raise_for_status()  # Raise exception for 4xx/5xx errors
+        response.raise_for_status()
         payload, raw_text = _parse_json_response(response)
         if payload is None:
             result = _tool_error(
@@ -201,9 +253,8 @@ def search_customer_by_phone(phone_number: str) -> Dict[str, Any]:
         result = _tool_success(payload, system_name)
         _log_tool_result(system_name, True)
         return result
-
     except requests.exceptions.RequestException as e:
-        code, msg, retryable = _handle_api_error(e, getattr(e, 'response', None))
+        code, msg, retryable = _handle_api_error(e, getattr(e, "response", None))
         result = _tool_error(code, msg, retryable, system_name)
         _log_tool_result(system_name, False, result.get("error"))
         return result
@@ -237,14 +288,10 @@ def update_customer_name(phone: str, contact_name: str) -> Dict[str, Any]:
         _log_tool_result(system_name, False, result.get("error"))
         return result
 
-    if not API_JWT_TOKEN:
-        result = _tool_error(
-            "AUTH_MISSING",
-            "API_JWT_TOKEN environment variable is not set. Authentication is not possible.",
-            False,
-            system_name,
-        )
-        _log_tool_result(system_name, False, result.get("error"))
+    # YTL demo: no EBM API; pretend update succeeded
+    if USE_LOCAL_DATA or not API_JWT_TOKEN:
+        result = _tool_success({"status": "updated", "demo": True}, system_name)
+        _log_tool_result(system_name, True)
         return result
 
     headers = {
@@ -312,23 +359,11 @@ def verify_invoice(
         has_invoice_number=bool(invoice_number),
         store_count=len(store_codes or []),
     )
-    if not INVOICE_VERIFY_URL:
-        result = _tool_error(
-            "CONFIG_MISSING",
-            "INVOICE_VERIFY_URL environment variable is not set. Invoice verification is not possible.",
-            False,
-            system_name,
-        )
-        _log_tool_result(system_name, False, result.get("error"))
-        return result
-    if not API_JWT_TOKEN:
-        result = _tool_error(
-            "AUTH_MISSING",
-            "API_JWT_TOKEN environment variable is not set. Authentication is not possible.",
-            False,
-            system_name,
-        )
-        _log_tool_result(system_name, False, result.get("error"))
+
+    # YTL demo: no EBM invoice API; return dummy success
+    if USE_LOCAL_DATA or not API_JWT_TOKEN or not INVOICE_VERIFY_URL:
+        result = _tool_success({"success": True, "verified": True, "message": "Demo: verified (dummy)"}, system_name)
+        _log_tool_result(system_name, True)
         return result
 
     invoice_type_norm = (invoice_type or "").strip().lower()
@@ -478,35 +513,32 @@ def search_products_by_sku(
         sku_preview=(sku_codes or [])[:5],
         store_code=store_code,
     )
-    print(f"--- Tool: Calling Product API with SKUs: {sku_codes} ---")
-    
-    # --- Auth Change ---
-    if not API_JWT_TOKEN:
-        result = _tool_error(
-            "AUTH_MISSING",
-            "API_JWT_TOKEN environment variable is not set. Authentication is not possible.",
-            False,
-            system_name,
-        )
-        _log_tool_result(system_name, False, result.get("error"))
+
+    # YTL demo: use dummy products from data/products.json (no EBM API)
+    if USE_LOCAL_DATA or not API_JWT_TOKEN:
+        data = _load_local_json("products.json")
+        if data and isinstance(data.get("products"), list):
+            codes = [str(s).strip().upper() for s in (sku_codes or []) if s]
+            found = [
+                p for p in data["products"]
+                if (str(p.get("sku_code") or p.get("sku") or "").strip().upper() in codes
+            ]
+            payload = {"products": found}
+            sanitized = _strip_pricing_fields(payload)
+            result = _tool_success(sanitized, system_name)
+            _log_tool_result(system_name, True)
+            return result
+        result = _tool_success({"products": []}, system_name)
+        _log_tool_result(system_name, True)
         return result
+
     headers = {"Authorization": f"Bearer {API_JWT_TOKEN}"}
-    # --- End Auth Change ---
-    
-    # Construct the JSON payload for the POST request
     payload = {"skus": sku_codes}
     if store_code:
         payload["store_code"] = store_code
-    
     try:
-        # Use requests.post() and send the data as 'json'
-        response = requests.post(
-            PRODUCT_SKU_API_URL, 
-            json=payload,
-            headers=headers  # <-- Added headers
-        )
+        response = requests.post(PRODUCT_SKU_API_URL, json=payload, headers=headers)
         response.raise_for_status()
-
         payload, raw_text = _parse_json_response(response)
         if payload is None:
             result = _tool_error(
@@ -521,9 +553,8 @@ def search_products_by_sku(
         result = _tool_success(sanitized, system_name)
         _log_tool_result(system_name, True)
         return result
-
     except requests.exceptions.RequestException as e:
-        code, msg, retryable = _handle_api_error(e, getattr(e, 'response', None))
+        code, msg, retryable = _handle_api_error(e, getattr(e, "response", None))
         result = _tool_error(code, msg, retryable, system_name)
         _log_tool_result(system_name, False, result.get("error"))
         return result
@@ -576,40 +607,37 @@ def semantic_product_search(
         limit=limit,
         store_code=store_code,
     )
-    print(f"--- Tool: Calling Semantic Search API with query: {query} ---")
-    
-    # --- Auth Change ---
-    if not API_JWT_TOKEN:
-        result = _tool_error(
-            "AUTH_MISSING",
-            "API_JWT_TOKEN environment variable is not set. Authentication is not possible.",
-            False,
-            system_name,
-        )
-        _log_tool_result(system_name, False, result.get("error"))
-        return result
-    headers = {"Authorization": f"Bearer {API_JWT_TOKEN}"}
-    # --- End Auth Change ---
-    
-    # Construct the JSON payload for the POST request
-    payload = {
-        "query": query,
-        "min_score": min_score,
-        "limit": limit
-    }
-    if store_code:
-        # Keep both keys to match backend expectations.
-        payload["store_code"] = store_code
-    
-    try:
-        # Use requests.post() and send the data as 'json'
-        response = requests.post(
-            PRODUCT_SEMANTIC_SEARCH_API_URL, 
-            json=payload,
-            headers=headers  # <-- Added headers
-        )
-        response.raise_for_status()
 
+    # YTL demo: use dummy products from data/products.json (no EBM API)
+    if USE_LOCAL_DATA or not API_JWT_TOKEN:
+        data = _load_local_json("products.json")
+        if data and isinstance(data.get("products"), list):
+            q = (query or "").lower()
+            found = []
+            for p in data["products"]:
+                name = (p.get("name") or p.get("product_name") or p.get("sku_code") or "").lower()
+                if q and (q in name or any(w in name for w in q.split())):
+                    found.append(p)
+                if len(found) >= limit:
+                    break
+            if not found and data["products"]:
+                found = list(data["products"][:limit])
+            payload = {"products": found[:limit]}
+            sanitized = _strip_pricing_fields(payload)
+            result = _tool_success(sanitized, system_name)
+            _log_tool_result(system_name, True)
+            return result
+        result = _tool_success({"products": []}, system_name)
+        _log_tool_result(system_name, True)
+        return result
+
+    headers = {"Authorization": f"Bearer {API_JWT_TOKEN}"}
+    payload = {"query": query, "min_score": min_score, "limit": limit}
+    if store_code:
+        payload["store_code"] = store_code
+    try:
+        response = requests.post(PRODUCT_SEMANTIC_SEARCH_API_URL, json=payload, headers=headers)
+        response.raise_for_status()
         payload, raw_text = _parse_json_response(response)
         if payload is None:
             result = _tool_error(
@@ -624,9 +652,8 @@ def semantic_product_search(
         result = _tool_success(sanitized, system_name)
         _log_tool_result(system_name, True)
         return result
-
     except requests.exceptions.RequestException as e:
-        code, msg, retryable = _handle_api_error(e, getattr(e, 'response', None))
+        code, msg, retryable = _handle_api_error(e, getattr(e, "response", None))
         result = _tool_error(code, msg, retryable, system_name)
         _log_tool_result(system_name, False, result.get("error"))
         return result

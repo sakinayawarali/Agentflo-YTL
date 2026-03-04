@@ -24,23 +24,24 @@ def get_vn_prompt():
     # -----------------------------------------------------
     # 1) Resolve language from ENV first, then fallback to config
     # -----------------------------------------------------
-    # VN_LANGUAGE: "en", "ur", "ar", "cn", "cn_my", "bm"
-    lang_env = (os.getenv("VN_LANGUAGE") or "").strip().lower()
-    
-    lang_map = {
-        "en": "EN",
-        "ur": "UR",
-        "ar": "AR",
-        "cn": "CN",       # Mandarin (Mainland)
-        "cn_my": "CN_MY", # Mandarin (Malaysia)
-        "bm": "BM"        # Bahasa Melayu (Malaysia)
-    }
-
-    if lang_env in lang_map:
-        lang = lang_map[lang_env]
+    # YTL Cement: English-only voice notes. Force EN for tenant ytl or when unset.
+    tenant = (os.getenv("TENANT_ID") or "").strip().lower()
+    if tenant == "ytl" or not tenant:
+        lang = "EN"
     else:
-        # fallback to JSON default
-        lang = (cfg.get("VN_LANGUAGE_MODE") or "EN").upper()
+        lang_map = {
+            "en": "EN",
+            "ur": "UR",
+            "ar": "AR",
+            "cn": "CN",
+            "cn_my": "CN_MY",
+            "bm": "BM",
+        }
+        lang_env = (os.getenv("VN_LANGUAGE") or "").strip().lower()
+        if lang_env in lang_map:
+            lang = lang_map[lang_env]
+        else:
+            lang = (cfg.get("VN_LANGUAGE_MODE") or "EN").upper()
 
     cfg["VN_LANGUAGE_MODE"] = lang  # keep in cfg so template can see the actual language
 
