@@ -2292,6 +2292,7 @@ class RouteHandler:
                                 reply_to_message_id=replied_to_id,
                             )
 
+                            # Billing: base event
                             try:
                                 base_key = f"{inbound_key}::base"
                                 if base_key not in self._emitted_billing_ids:
@@ -2311,6 +2312,7 @@ class RouteHandler:
                             except Exception as e:
                                 logger.warning("billing.text.fallback.base_event_failed", error=str(e))
 
+                            # Billing: rated event
                             try:
                                 rated_key = f"{inbound_key}::rated"
                                 if rated_key not in self._emitted_billing_ids:
@@ -2321,30 +2323,30 @@ class RouteHandler:
                                         message_id=inbound_key,
                                         role="assistant",
                                         channel="whatsapp",
-                                            conversation_text=agent_response,
-                                            gemini_usage=self.adk_helper.get_last_gemini_usage(user_id),
-                                            eleven_tts_usage=None,
-                                        )
-                                        send_billing_event_fire_and_forget(rated_event)
-                                        self._emitted_billing_ids.add(rated_key)
-                                except Exception as e:
-                                    logger.warning("billing.text.fallback.rated_event_failed", error=str(e))
+                                        conversation_text=agent_response,
+                                        gemini_usage=self.adk_helper.get_last_gemini_usage(user_id),
+                                        eleven_tts_usage=None,
+                                    )
+                                    send_billing_event_fire_and_forget(rated_event)
+                                    self._emitted_billing_ids.add(rated_key)
+                            except Exception as e:
+                                logger.warning("billing.text.fallback.rated_event_failed", error=str(e))
 
-                                results.append({
-                                    "name": name,
-                                    "message": text_message,
-                                    "reply_to": replied_to_id,
-                                    "Agent": agent_response,
-                                    "immediate": "buffer_fallback",
-                                })
-                            except Exception as fallback_err:
-                                logger.error("msg.text.fallback_failed", user_id=user_id, error=str(fallback_err))
-                                fallback = "Bhai thora masla ho gaya, ek dafa phir try kar lein."
-                                try:
-                                    self.adk_helper._send_text_once(user_id, fallback, reply_to_message_id=replied_to_id)
-                                except Exception:
-                                    pass
-                            continue
+                            results.append({
+                                "name": name,
+                                "message": text_message,
+                                "reply_to": replied_to_id,
+                                "Agent": agent_response,
+                                "immediate": "buffer_fallback",
+                            })
+                        except Exception as fallback_err:
+                            logger.error("msg.text.fallback_failed", user_id=user_id, error=str(fallback_err))
+                            fallback = "Bhai thora masla ho gaya, ek dafa phir try kar lein."
+                            try:
+                                self.adk_helper._send_text_once(user_id, fallback, reply_to_message_id=replied_to_id)
+                            except Exception:
+                                pass
+                        continue
 
                     # --------------------------------------------------
                     # AUDIO
