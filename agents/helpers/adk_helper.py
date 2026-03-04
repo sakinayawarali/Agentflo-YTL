@@ -158,6 +158,7 @@ class ADKHelper:
     def __init__(self):
         # surface shared handles for mixins
         self.GenerativeModel = GenerativeModel
+        # Default VN language; override to English for YTL Cement demo.
         self.vn_language = (os.getenv("VN_LANGUAGE") or "ur").strip().lower()
         try:
             from google import genai
@@ -224,6 +225,8 @@ class ADKHelper:
         # Clients
         self.db = firestore.Client()
         self.tenant_id = get_tenant_id()
+        if (self.tenant_id or "").lower() == "ytl":
+            self.vn_language = "en"
         self.session_service = VertexAiSessionService(project=self.PROJECT_ID, location=self.LOCATION)
                 
         # HTTP sessions

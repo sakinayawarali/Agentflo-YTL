@@ -35,18 +35,40 @@ def greeting_template(
     """
     YTL Cement demo greeting.
 
-    Always welcome the user in clear English and immediately
-    steer them toward placing a concrete order.
+    Personalised, English-only welcome that uses the customer's
+    name when available and reinforces the YTL Cement brand.
     """
     company_name = _resolve_company_name() or "YTL Cement"
+    name = extract_first_name(customer_name) or ""
 
-    # Fixed, WhatsApp-ready greeting for the YTL Cement demo.
-    # Keep this deterministic so the first impression is always the same.
-    greeting = (
-        f"Hi! 👋 Welcome to {company_name} Delivery.\n"
-        "Would you like to place a new concrete order today?"
-    )
+    # Normalise spacing for name placeholder
+    display_name = name.strip()
 
+    # Three variants, roughly matching the options you shared.
+    if display_name:
+        options = [
+            f"Hi {display_name}! 👋 Welcome to {company_name} — Building Better since 1955. "
+            "I'm your product assistant, here to help you find the right solution for your project. "
+            "How can I help you today?",
+            f"Hello, {display_name}! Great to have you here. At {company_name}, we believe in Building Better "
+            "— and that starts with finding the right product for you. What can I help you with?",
+            f"Hi {display_name}! Welcome to {company_name} 🏗️ — Building Better for over 70 years. "
+            "Ask me anything about our products and I'll point you in the right direction!",
+        ]
+    else:
+        # Fallback when we don't know the customer's name yet.
+        options = [
+            f"Hi there! 👋 Welcome to {company_name} — Building Better since 1955. "
+            "I'm your product assistant, here to help you find the right solution for your project. "
+            "How can I help you today?",
+            f"Hello! Great to have you here. At {company_name}, we believe in Building Better "
+            "— and that starts with finding the right product for you. What can I help you with?",
+            f"Hi! Welcome to {company_name} 🏗️ — Building Better for over 70 years. "
+            "Ask me anything about our products and I'll point you in the right direction!",
+        ]
+
+    # Keep a bit of variation so repeated greetings feel natural.
+    greeting = random.choice(options)
     return greeting.strip()
 
 
