@@ -413,7 +413,17 @@ class GreetingVNCache:
         Generate greeting script using LLM and Gemini API.
         """
         _ = metadata  # keep signature stable; script stays generic for cache reuse
-        
+
+        # YTL Cement demo: avoid calling Gemini HTTP APIs from Cloud Run.
+        tenant = (os.getenv("TENANT_ID") or "").strip().lower()
+        if tenant == "ytl" or not tenant:
+            script = (
+                "Hi, this is Ayesha from YTL Cement. "
+                "I have shared your concrete update as a voice note so you can quickly review it on site."
+            )
+            logger.info("greeting_vn.static_ytl_script", script_preview=script[:80])
+            return script
+
         try:
             # ✅ Use NEW SDK with strict Gemini (API key, non-Vertex)
             from google import genai

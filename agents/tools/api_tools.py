@@ -35,10 +35,10 @@ if not INVOICE_VERIFY_URL:
 EXCLUDED_PRICING_KEYS = {"total_sell_price_virtual_pack", "retailer_profit_margin"}
 
 # --- YTL demo: always use dummy data (no EBM APIs, no user authentication) ---
-USE_LOCAL_DATA = (
-    TENANT_ID == "ytl"
-    or os.environ.get("USE_LOCAL_DATA", "").strip().lower() in ("1", "true", "yes")
-)
+# For this YTL Cement agent we never want to hit the legacy EBM Lambda APIs.
+# Force USE_LOCAL_DATA to True so all customer/product/invoice tools use the
+# JSON files under data/ instead of remote endpoints, regardless of env vars.
+USE_LOCAL_DATA = True
 
 
 def _data_dir() -> str:
