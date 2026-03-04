@@ -2095,10 +2095,13 @@ def _mark_button_clicked(user_id: str, button_id: str):
 
 def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> str:
     """
-    Sends the product catalogue to the user.
-    - Meta transport: native interactive catalog_message.
-    - Twilio transport: falls back to a text + optional list/message link.
-    Optional session_id tags the attempt for per-session dedupe.
+    YTL Cement demo: send a simple, text-based product catalogue.
+
+    - We do NOT use WhatsApp commerce catalogs or any EBM SKUs here.
+    - Instead, we read local data/products.json and list key concrete mixes
+      for the user in plain English.
+    - This function is also responsible for triggering the greeting VN
+      (see ADKHelper._auto_send_catalog_if_needed).
     """
     # Guardrail: avoid duplicate sends when we've already sent recently (e.g., auto + tool back-to-back)
     try:
@@ -2117,170 +2120,12 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
     except Exception as e:
         logger.warning("catalog.cooldown_check_failed", user_id=user_id, error=str(e))
 
-    load_dotenv()
-    transport = (os.getenv("WHATSAPP_TRANSPORT", "meta") or "meta").strip().lower()
-
-    if transport == "twilio":
-        # Twilio: send a plain text catalog link + instruction. Can be extended to interactive list buttons later.
-        msg = (
-            "Check out our products here:\n"
-            f"https://wa.me/c/{os.getenv('WHATSAPP_BUSINESS_NUMBER', '923015428188')}\n\n"
-            "Reply with the items and quantities you'd like."
-        )
-        try:
-            from agents.helpers.adk_helper import ADKHelper  # lazy import to avoid cycles
-            helper = ADKHelper()
-            helper._send_text_once(user_id, msg)
-            _sessions.mark_catalog_sent(user_id, session_id)
-            return ""
-        except Exception as e:
-            logger.error("catalog.twilio.send_failed", user_id=user_id, error=str(e))
-            _sessions.mark_catalog_sent(user_id, session_id)
-            return ""
-
-    WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
-    WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
-
-    if not WHATSAPP_PHONE_NUMBER_ID or not WHATSAPP_ACCESS_TOKEN:
-        print("Could not send product catalogue: missing WhatsApp configuration.")
-        return "Internal configuration issue: WhatsApp settings missing."
-
-    url = f"https://graph.facebook.com/v23.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
-
-    headers = {
-        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    # Option A : native catalog_message sender. sends original full catalog.
-    # Keep this commented so you can quickly switch back later.
-    # data = {
-    #     "messaging_product": "whatsapp",
-    #     "recipient_type": "individual",
-    #     "to": user_id,
-    #     "type": "interactive",
-    #     "interactive": {
-    #         "type": "catalog_message",
-    #         "body": {
-    #             "text": "Check out our products below:"  # Required body text
-    #         },
-    #         "action": {
-    #             "name": "catalog_message"
-    #         }
-    #     }
-    # }
-
-    # Option B : fixed interactive product_list payload. sends 30 item catalog.
-    data = {
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": user_id,
-        "type": "interactive",
-        "interactive": {
-            "type": "product_list",
-            "header": {
-                "type": "text",
-                "text": "Peak Freans Shop",
-            },
-            "body": {
-                "text": "Welcome to the EBM Store! 🍪\n\nYeh rahay hamaray products:",
-            },
-            "footer": {
-                "text": "Freshness in every bite!",
-            },
-            "action": {
-                "catalog_id": "1188324876707592",
-                "sections": [
-                    {
-                        "title": "Sooper Favorites",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00904"},
-                            {"product_retailer_id": "SKU00812"},
-                            {"product_retailer_id": "SKU00814"},
-                            {"product_retailer_id": "SKU00902"},
-                            {"product_retailer_id": "SKU00892"},
-                        ],
-                    },
-                    {
-                        "title": "Rio & Smile",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00731"},
-                            {"product_retailer_id": "SKU00733"},
-                            {"product_retailer_id": "SKU00735"},
-                            {"product_retailer_id": "SKU00737"},
-                            {"product_retailer_id": "SKU00685"},
-                            {"product_retailer_id": "SKU00686"},
-                        ],
-                    },
-                    {
-                        "title": "Gluco Energy",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00860"},
-                            {"product_retailer_id": "SKU00900"},
-                            {"product_retailer_id": "SKU00807"},
-                        ],
-                    },
-                    {
-                        "title": "Sandwich Range",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00747"},
-                            {"product_retailer_id": "SKU00749"},
-                            {"product_retailer_id": "SKU00743"},
-                            {"product_retailer_id": "SKU00745"},
-                        ],
-                    },
-                    {
-                        "title": "Peanut & Click",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00757"},
-                            {"product_retailer_id": "SKU00759"},
-                            {"product_retailer_id": "SKU00767"},
-                            {"product_retailer_id": "SKU00768"},
-                            {"product_retailer_id": "SKU00764"},
-                        ],
-                    },
-                    {
-                        "title": "Choco & Marie",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00793"},
-                            {"product_retailer_id": "SKU00870"},
-                            {"product_retailer_id": "SKU00777"},
-                            {"product_retailer_id": "SKU00778"},
-                        ],
-                    },
-                    {
-                        "title": "Tea Time Specials",
-                        "product_items": [
-                            {"product_retailer_id": "SKU00787"},
-                            {"product_retailer_id": "SKU00773"},
-                            {"product_retailer_id": "SKU00894"},
-                        ],
-                    },
-                ],
-            },
-        },
-    }
-
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=15)
-        response.raise_for_status()
-        _sessions.mark_catalog_sent(user_id, session_id)
-        return ""
-    except requests.exceptions.RequestException as e:
-        # --- START NEW LOGGING ---
-        if e.response is not None:
-            # This prints the specific error JSON from Meta (e.g., "Permissions missing")
-            print(f"Facebook API Error Body: {e.response.text}") 
-        # --- END NEW LOGGING ---
-
-        status = getattr(getattr(e, "response", None), "status_code", None)
-        print(f"Error sending catalogue: {e}")
-        _sessions.mark_catalog_sent(user_id, session_id)
-        return (
-            f"Catalog open karne mein error aa gaya hai (status={status}). "
-            f"Please use this link: "
-            f"https://wa.me/c/{os.getenv('WHATSAPP_BUSINESS_NUMBER', '923015428188')}"
-        )
+    # YTL demo: catalog auto-send is disabled. We rely on tools that read
+    # data/products.json (semantic_product_search, search_products_by_sku)
+    # whenever the user asks for product information.
+    logger.info("catalog.send.disabled_ytl", user_id=user_id)
+    _sessions.mark_catalog_sent(user_id, session_id)
+    return ""
 class SendCatalogueInput(BaseModel):
     """No extra fields; user_id is injected from runtime."""
     pass

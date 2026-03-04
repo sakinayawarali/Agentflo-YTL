@@ -44,27 +44,56 @@ def greeting_template(
     # Normalise spacing for name placeholder
     display_name = name.strip()
 
-    # Three variants, roughly matching the options you shared.
     if display_name:
         options = [
-            f"Hi {display_name}! 👋 Welcome to {company_name} — Building Better since 1955. "
-            "I'm your product assistant, here to help you find the right solution for your project. "
-            "How can I help you today?",
-            f"Hello, {display_name}! Great to have you here. At {company_name}, we believe in Building Better "
-            "— and that starts with finding the right product for you. What can I help you with?",
-            f"Hi {display_name}! Welcome to {company_name} 🏗️ — Building Better for over 70 years. "
-            "Ask me anything about our products and I'll point you in the right direction!",
+            # 1 — Bullet-style, clear & scannable
+            f"Hi {display_name}! 👋 Welcome to {company_name} — Building Better since 1955.\n"
+            "I can help you with:\n"
+            "🔹 Exploring our cement & concrete products\n"
+            "🔹 Finding the right material for your project\n"
+            "🔹 Getting product specs & recommendations\n"
+            "What are you building today?",
+            # 2 — Natural & conversational
+            f"Hello {display_name}! Welcome to {company_name}. I'm your product assistant — I can answer questions "
+            "about our full range of cement, ready-mix concrete, drymix, and aggregates, and help match you to the "
+            "right product for your project. Where would you like to start?",
+            # 3 — Action-first, punchy
+            f"Hi {display_name}! 👷 I'm {company_name}'s product guide. Ask me about product specs, compare materials, "
+            "or get a recommendation for your build — I'm here to help you Build Better. What do you need?",
+            # 4 — Friendly & structured
+            f"Hey {display_name}, welcome! 🏗️ I'm here to make finding the right {company_name} product easy. "
+            "You can ask me to:\n"
+            "✅ Recommend a product for your project\n"
+            "✅ Explain product types & technical specs\n"
+            "✅ Compare cement grades & mixes\n"
+            "So — what's the project?",
+            # 5 — Premium & polished
+            f"Welcome, {display_name}. At {company_name}, we've been Building Better for over 70 years. "
+            "As your dedicated product assistant, I'm here to help you navigate our full range — from Portland cement "
+            "to specialty mixes — and find exactly what your project needs. How can I assist you today?",
         ]
     else:
         # Fallback when we don't know the customer's name yet.
         options = [
-            f"Hi there! 👋 Welcome to {company_name} — Building Better since 1955. "
-            "I'm your product assistant, here to help you find the right solution for your project. "
-            "How can I help you today?",
-            f"Hello! Great to have you here. At {company_name}, we believe in Building Better "
-            "— and that starts with finding the right product for you. What can I help you with?",
-            f"Hi! Welcome to {company_name} 🏗️ — Building Better for over 70 years. "
-            "Ask me anything about our products and I'll point you in the right direction!",
+            "Hi there! 👋 Welcome to YTL Cement — Building Better since 1955.\n"
+            "I can help you with:\n"
+            "🔹 Exploring our cement & concrete products\n"
+            "🔹 Finding the right material for your project\n"
+            "🔹 Getting product specs & recommendations\n"
+            "What are you building today?",
+            "Hello! Welcome to YTL Cement. I'm your product assistant — I can answer questions about our full range "
+            "of cement, ready-mix concrete, drymix, and aggregates, and help match you to the right product for your "
+            "project. Where would you like to start?",
+            "Hi! 👷 I'm YTL Cement's product guide. Ask me about product specs, compare materials, or get a "
+            "recommendation for your build — I'm here to help you Build Better. What do you need?",
+            "Hey, welcome! 🏗️ I'm here to make finding the right YTL Cement product easy. You can ask me to:\n"
+            "✅ Recommend a product for your project\n"
+            "✅ Explain product types & technical specs\n"
+            "✅ Compare cement grades & mixes\n"
+            "So — what's the project?",
+            "Welcome. At YTL Cement, we've been Building Better for over 70 years. As your dedicated product assistant, "
+            "I'm here to help you navigate our full range — from Portland cement to specialty mixes — and find exactly "
+            "what your project needs. How can I assist you today?",
         ]
 
     # Keep a bit of variation so repeated greetings feel natural.
