@@ -96,13 +96,13 @@ def _resolve_lang_code(cfg: dict) -> str:
     return "EN"
 
 def _resolve_pack_name(cfg: dict, lang_code: str) -> str:
-    # You can expand mapping from conversation.languagePack later.
     if lang_code == "UR":
         return "PK_Retail_RomanUrdu_v1"
     if lang_code == "AR":
         return "SA_Retail_Arabic_v1"
-    # Until you create an EN pack, pick a default
-    return "PK_Retail_RomanUrdu_v1"
+    if lang_code == "EN":
+        return "EN_Retail_Standard_v1"
+    return "EN_Retail_Standard_v1"
 
 def _primary_language_label(lang_code: str) -> str:
     return {"UR": "Roman Urdu", "AR": "Arabic", "EN": "English"}.get(lang_code, "English")
@@ -116,7 +116,13 @@ except Exception as e:
     AGENT_CFG = {}
     logger.error("Failed to load AGENT_CFG from Firestore; using defaults", error=str(e))
 
-PROMPT_LANGUAGE = _resolve_lang_code(AGENT_CFG)
+# YTL Cement: English-only agent (text + VN). Force EN for ytl or when tenant unset (demo).
+_resolved = _resolve_lang_code(AGENT_CFG)
+_tid = (TENANT_ID or "").strip().lower()
+if _tid == "ytl" or not _tid:
+    PROMPT_LANGUAGE = "EN"
+else:
+    PROMPT_LANGUAGE = _resolved
 
 business_context = _get_dict(AGENT_CFG, "businessContext")
 business_name = _pick_str(
