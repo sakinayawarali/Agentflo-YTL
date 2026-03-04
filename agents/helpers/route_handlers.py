@@ -2281,74 +2281,46 @@ class RouteHandler:
                                 logger.error(f"msg.{immediate_reason}.error", user_id=user_id, error=str(e), exc_info=True)
 
                         # ===================================================================
-                        # BUFFER TEXT MESSAGE
+                        # DIRECT TEXT HANDLING (BUFFERING DISABLED FOR YTL DEMO)
                         # ===================================================================
-                        logger.info("msg.text.buffering", user_id=user_id, text_preview=text_message[:50])
-                        new_generation = None
                         try:
-                            conv_inactivity_sec = int(os.getenv("CONVERSATION_INACTIVITY_SEC", "86400"))
-                            conversation_id, _ = self.adk_helper.session_helper.get_or_start_conversation(
-                                user_id,
-                                conversation_inactivity_sec=conv_inactivity_sec
-                            )
-                            session_id = self.adk_helper._get_cached_session_id(user_id)
-                            new_generation = self.message_buffer.append_message(
-                                user_id,
+                            agent_response = self.adk_helper.handle_message(
                                 text_message,
+                                user_id,
+                                is_voice_input=False,
+                                inbound_key=inbound_key,
                                 reply_to_message_id=replied_to_id,
-                                inbound_message_id=inbound_key,
-                                conversation_id=conversation_id,
-                                session_id=session_id,
                             )
-                            self._schedule_buffer_drain(user_id, new_generation)
-                            logger.info("msg.text.buffered", user_id=user_id, generation=new_generation)
-                            results.append({
-                                "name": name,
-                                "message": "text_buffered",
-                                "generation": new_generation,
-                            })
-                            continue
 
-                        except Exception as buffering_err:
-                            logger.error("buffering.failed_falling_back", error=str(buffering_err))
                             try:
-                                agent_response = self.adk_helper.handle_message(
-                                    text_message,
-                                    user_id,
-                                    is_voice_input=False,
-                                    inbound_key=inbound_key,
-                                    reply_to_message_id=replied_to_id,
-                                )
+                                base_key = f"{inbound_key}::base"
+                                if base_key not in self._emitted_billing_ids:
+                                    base_event = generate_billing_event_v2(
+                                        tenant_id=TENANT_ID,
+                                        conversation_id=self._get_conversation_id(user_id),
+                                        msg_type=self._billing_msg_type(mtype),
+                                        message_id=inbound_key,
+                                        role="user",
+                                        channel="whatsapp",
+                                        conversation_text=text_message,
+                                        gemini_usage=None,
+                                        eleven_tts_usage=None,
+                                    )
+                                    send_billing_event_fire_and_forget(base_event)
+                                    self._emitted_billing_ids.add(base_key)
+                            except Exception as e:
+                                logger.warning("billing.text.fallback.base_event_failed", error=str(e))
 
-                                try:
-                                    base_key = f"{inbound_key}::base"
-                                    if base_key not in self._emitted_billing_ids:
-                                        base_event = generate_billing_event_v2(
-                                            tenant_id=TENANT_ID,
-                                            conversation_id=self._get_conversation_id(user_id),
-                                            msg_type=self._billing_msg_type(mtype),
-                                            message_id=inbound_key,
-                                            role="user",
-                                            channel="whatsapp",
-                                            conversation_text=text_message,
-                                            gemini_usage=None,
-                                            eleven_tts_usage=None,
-                                        )
-                                        send_billing_event_fire_and_forget(base_event)
-                                        self._emitted_billing_ids.add(base_key)
-                                except Exception as e:
-                                    logger.warning("billing.text.fallback.base_event_failed", error=str(e))
-
-                                try:
-                                    rated_key = f"{inbound_key}::rated"
-                                    if rated_key not in self._emitted_billing_ids:
-                                        rated_event = generate_billing_event_v2(
-                                            tenant_id=TENANT_ID,
-                                            conversation_id=self._get_conversation_id(user_id),
-                                            msg_type=self._billing_msg_type(mtype),
-                                            message_id=inbound_key,
-                                            role="assistant",
-                                            channel="whatsapp",
+                            try:
+                                rated_key = f"{inbound_key}::rated"
+                                if rated_key not in self._emitted_billing_ids:
+                                    rated_event = generate_billing_event_v2(
+                                        tenant_id=TENANT_ID,
+                                        conversation_id=self._get_conversation_id(user_id),
+                                        msg_type=self._billing_msg_type(mtype),
+                                        message_id=inbound_key,
+                                        role="assistant",
+                                        channel="whatsapp",
                                             conversation_text=agent_response,
                                             gemini_usage=self.adk_helper.get_last_gemini_usage(user_id),
                                             eleven_tts_usage=None,
