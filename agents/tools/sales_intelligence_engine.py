@@ -104,7 +104,9 @@ KNOWN_ERRORS = {
     "4002": "Invalid date range",
 }
 
-CUSTOMER_SAFE_FALLBACK_TEXT = "Samajh nahi aaya, kya aap dobara keh sakte hain?"
+CUSTOMER_SAFE_FALLBACK_TEXT = (
+    "I didn't quite catch that. Could you please repeat or rephrase your message in English?"
+)
 
 PROMOTIONS_INLINE_MAX = 6
 PENDING_RECOMMENDATIONS_FIELD = "pending_recommendations"

@@ -101,7 +101,9 @@ GOODBYE_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
-CUSTOMER_SAFE_FALLBACK_TEXT = "Samajh nahi aaya, kya aap dobara keh sakte hain?"
+CUSTOMER_SAFE_FALLBACK_TEXT = (
+    "I didn't quite catch that. Could you please repeat or rephrase your message in English?"
+)
 INTERNAL_ERROR_REPLY_MARKERS = (
     "request invalid lag rahi hai",
     "system error",
@@ -1340,10 +1342,22 @@ class ADKHelper:
 
         except Exception as e:
             # NOTE: exc_info=True so we get a full stack trace in Cloud Logging
+            msg = str(e)
+
+            # If the process is already shutting down its async executor, avoid
+            # noisy fallback messages and just exit quietly for this turn.
+            if isinstance(e, RuntimeError) and "cannot schedule new futures after shutdown" in msg:
+                logger.warning(
+                    "handle_message_async.shutdown_in_progress",
+                    error=msg,
+                    user_id=user_id,
+                    exc_info=True,
+                )
+                return ""
 
             logger.error(
                 "handle_message_async.error",
-                error=str(e),
+                error=msg,
                 user_id=user_id,
                 exc_info=True,
             )
