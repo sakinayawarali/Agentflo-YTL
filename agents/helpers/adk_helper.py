@@ -38,7 +38,7 @@ from google.api_core.exceptions import AlreadyExists
 from agents.audio.processing import VoiceNoteProcessor
 from agents.agent import root_agent
 from agents.helpers.session_helper import SessionStore
-from agents.helpers.firestore_utils import get_tenant_id, user_root
+from agents.helpers.firestore_utils import get_tenant_id, get_agent_id, user_root
 from utils.logging import logger
 from agents.tools.api_tools import search_customer_by_phone, unwrap_tool_response
 from agents.guardrails import adk_guardrails
@@ -302,11 +302,12 @@ class ADKHelper:
             tts_generator=TTSGenerator(),
             vn_processor=VoiceNoteProcessor(
                 language=self.vn_language or "ur",
-                genai_client=self.client,  
-                model=self.model           
+                genai_client=self.client,
+                model=self.model,
             ),
             send_audio_func=self._upload_and_send_audio,
             get_metadata_func=self._get_stored_customer_metadata,
+            agent_id=get_agent_id(),
         )
 
         # Cache

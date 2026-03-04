@@ -1967,6 +1967,60 @@ def sales_intelligence_engine(
     if not user_id:
         return _customer_error_fallback("sales_intel.error.auth_missing_user_id", user_id=user_id)
 
+    # YTL Cement demo: bypass orchestrator and use local products.json instead of
+    # the remote Sales Intelligence API for ALL objectives.
+    if (TENANT_ID or "").strip().lower() == "ytl":
+        limit_val = _coerce_limit(limit) or 10
+        try:
+            from agents.tools.api_tools import _load_local_json  # type: ignore
+        except Exception:
+            _load_local_json = None  # type: ignore
+
+        products: List[Dict[str, Any]] = []
+        if _load_local_json:
+            try:
+                data = _load_local_json("products.json")
+                products = (data or {}).get("products") or []
+            except Exception as e:
+                logger.warning("sales_intel.ytl_local_products.load_failed", user_id=user_id, error=str(e))
+
+        if not products:
+            return (
+                "I could not find any demo products in the local catalogue right now. "
+                "Please try again in a moment."
+            )
+
+        # Simple top-N listing from local catalogue.
+        lines = [
+            "Here are some YTL Cement products you can order:",
+            "",
+        ]
+        for idx, p in enumerate(products[:limit_val], 1):
+            name = p.get("name") or p.get("product_name") or p.get("sku_code") or "Concrete mix"
+            sku_code = p.get("sku_code") or p.get("sku") or ""
+            desc = p.get("description") or ""
+            unit = p.get("unit") or "m³"
+            price = p.get("price_per_m3") or p.get("base_price") or p.get("price")
+
+            line = f"{idx}. {name}"
+            if sku_code:
+                line += f" ({sku_code})"
+            line += f" — {unit}"
+            if price is not None:
+                try:
+                    line += f", approx RM {float(price):.0f} per {unit}"
+                except Exception:
+                    pass
+            if desc:
+                line += f". {desc}"
+            lines.append(line)
+
+        lines.append("")
+        lines.append(
+            "Tell me which product and how many cubic metres you need, and I’ll help draft the order."
+        )
+        return "\n".join(lines)
+
     # --- GUARD: Reject placeholder/fake store codes before hitting the API ---
     # The LLM sometimes passes "UNKNOWN_STORECODE" or a phone number when it lacks a real store code.
     # A 422 from the API in this case is noisy and misleading; fail fast with a clear message.
