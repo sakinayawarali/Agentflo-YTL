@@ -10,6 +10,7 @@ from typing import Optional, Dict, Callable, Tuple, TYPE_CHECKING, Any
 from google.cloud import firestore
 from google.cloud.firestore import SERVER_TIMESTAMP
 from utils.logging import logger
+from agents.helpers.firestore_utils import get_agent_id
 
 if TYPE_CHECKING:
     # These are ONLY for type checking (Pylance/mypy)
@@ -41,9 +42,12 @@ class GreetingVNCache:
         vn_processor: Optional[VoiceNoteProcessor] = None,
         send_audio_func: Optional[Callable] = None,
         get_metadata_func: Optional[Callable] = None,
+        agent_id: Optional[str] = None,
     ):
         self.db = db
         self.tenant_id = tenant_id
+        # Align VN cache path with main agent_id used elsewhere
+        self.agent_id = (agent_id or get_agent_id()).strip()
 
         if tts_generator:
             self.tts_generator = tts_generator
@@ -67,7 +71,7 @@ class GreetingVNCache:
         return (
             self.db
             .collection("tenants").document(self.tenant_id)
-            .collection("agent_id").document(f"{self.tenant_id}_prod")
+            .collection("agent_id").document(self.agent_id)
             .collection("users").document(user_id)
             .collection("vn").document("greeting_vns")
             .collection("variants")
@@ -78,7 +82,7 @@ class GreetingVNCache:
         return (
             self.db
             .collection("tenants").document(self.tenant_id)
-            .collection("agent_id").document(f"{self.tenant_id}_prod")
+            .collection("agent_id").document(self.agent_id)
             .collection("users").document(user_id)
             .collection("vn").document("greeting_vns")
         )
