@@ -2001,6 +2001,14 @@ class ADKHelper:
         If reply_to_message_id is provided, the outbound message will appear
         as a quoted reply to that WAMID in the WhatsApp UI.
         """
+        # YTL Cement: allow toggling audio via env. By default audio is enabled;
+        # set YTL_AUDIO_ENABLED=false to disable uploads without code changes.
+        if (self.tenant_id or "").lower() == "ytl":
+            audio_enabled = os.getenv("YTL_AUDIO_ENABLED", "true").lower() in ("1", "true", "yes")
+            if not audio_enabled:
+                logger.info("audio.upload.disabled_ytl", to=to_number)
+                return False
+
         if self.is_twilio:
             return await asyncio.to_thread(
                 self._upload_and_send_audio_twilio,
