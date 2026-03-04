@@ -1190,7 +1190,8 @@ class ADKHelper:
                 proposed = " ".join((message or "").strip().split())
                 # Keep it simple: accept any non-empty text up to 60 chars as name.
                 if proposed:
-                    meta = {"customer_name": proposed}
+                    from typing import Dict, Optional as _Opt
+                    meta: Dict[str, _Opt[str]] = {"customer_name": proposed}
                     self._persist_customer_metadata(wa_user_id, meta)
                     self.session_helper.set_onboarding_status(wa_user_id, None)
                 else:
