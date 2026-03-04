@@ -1077,6 +1077,67 @@ class RouteHandler:
         logger.info("billing.msg_type.coerced", raw=raw_type, coerced="text")
         return "text"
 
+    def _send_location_request(self, user_id: str, reply_to_message_id: Optional[str] = None) -> bool:
+        """
+        Send a WhatsApp interactive location-request message so the user can share a pin.
+        Currently enabled only for Meta transport and YTL tenant.
+        """
+        if self.is_twilio:
+            return False
+
+        tenant = (TENANT_ID or "").strip().lower()
+        if tenant != "ytl":
+            return False
+
+        if not (WA_GRAPH_URL and WA_ACCESS_TOKEN and user_id):
+            logger.warning(
+                "wa.location_request.skip",
+                reason="missing_creds_or_params",
+                have_url=bool(WA_GRAPH_URL),
+                have_token=bool(WA_ACCESS_TOKEN),
+                have_to=bool(user_id),
+            )
+            return False
+
+        body_text = (
+            "Please tap the button below to share your site location pin so we can plan the truck route correctly."
+        )
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": user_id,
+            "type": "interactive",
+            "interactive": {
+                "type": "location_request_message",
+                "body": {"text": body_text},
+                "action": {"name": "send_location"},
+            },
+        }
+
+        if reply_to_message_id:
+            payload["context"] = {"message_id": reply_to_message_id}
+
+        headers = {
+            "Authorization": f"Bearer {WA_ACCESS_TOKEN}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            resp = requests.post(WA_GRAPH_URL, headers=headers, json=payload, timeout=15)
+            if 200 <= resp.status_code < 300:
+                logger.info("wa.location_request.sent", user_id=user_id)
+                return True
+            logger.warning(
+                "wa.location_request.fail",
+                user_id=user_id,
+                status=resp.status_code,
+                body=(resp.text or "")[:300] if resp.text else "",
+            )
+            return False
+        except Exception as e:
+            logger.error("wa.location_request.error", user_id=user_id, error=str(e))
+            return False
+
     # --- WhatsApp message reactions (non-blocking helper) ---
     def _send_reaction(self, to_number: str, message_id: str, emoji: str) -> bool:
         """
@@ -3263,6 +3324,11 @@ class RouteHandler:
                             # Map button IDs to synthetic text
                             if button_id == "ORDER_CONFIRM_YES":
                                 synthetic_text = "haan, order place kar do"
+                                # YTL: after explicit order confirmation, prompt for location pin via interactive message.
+                                try:
+                                    self._send_location_request(user_id, replied_to_id)
+                                except Exception as e:
+                                    logger.warning("wa.location_request.trigger_failed", user_id=user_id, error=str(e))
                             elif button_id == "ORDER_CONFIRM_NO":
                                 synthetic_text = "nahi, order abhi final nahi hai, aur items change karne hain"
                             else:
@@ -3361,6 +3427,12 @@ class RouteHandler:
 
                             if confirmed is True or next_action == "place_order":
                                 synthetic_text = "haan bhai, order final hai, place kar do"
+                                # YTL: after Flow-based confirmation, also prompt for site location pin.
+                                try:
+                                    self._send_location_request(user_id, replied_to_id)
+                                except Exception as e:
+                                    logger.warning("wa.location_request.trigger_failed_flow", user_id=user_id, error=str(e))
+
                                 agent_response = self.adk_helper.handle_message(
                                     synthetic_text,
                                     user_id,
