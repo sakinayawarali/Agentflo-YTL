@@ -240,6 +240,10 @@ class RouteHandler:
         inbound_key: Optional[str],
         reply_to_message_id: Optional[str],
     ) -> bool:
+        # YTL Cement demo: invoice onboarding is disabled (no authentication).
+        if (os.getenv("TENANT_ID") or "").strip().lower() == "ytl":
+            return False
+
         def _normalize_user_phone(val: str) -> str:
             digits = re.sub(r"\D", "", val or "")
             if not digits:
@@ -2147,144 +2151,31 @@ class RouteHandler:
                         self._mark_read(inbound_key)
 
                     # --------------------------------------------------
-                    # IMAGE-LED AUTH ONBOARDING (unauth users can send invoice image)
+                    # NO AUTHENTICATION (YTL demo)
                     # --------------------------------------------------
-                    is_auth = self.adk_helper.session_helper.get_auth_status(user_id)
-                    onboarding_status = self.adk_helper.session_helper.get_onboarding_status(user_id)
-                    if (not is_auth) and mtype == "image":
-                        media = message.get("image") or {}
-                        media_id = media.get("id")
-                        media_url = media.get("url") or media_id
-                        mime_type = media.get("mime_type")
-                        handled = self._handle_invoice_onboarding_image(
-                            user_id,
-                            media_id=media_id,
-                            media_url=media_url,
-                            mime_type=mime_type,
-                            inbound_key=inbound_key,
-                            reply_to_message_id=replied_to_id,
-                        )
-                        if handled:
-                            continue
-                        logger.info(
-                            "invoice.image.not_handled_pre_auth",
-                            user_id=user_id,
-                            media_id=media_id,
-                            inbound_key=inbound_key,
-                        )
+                    # All users can chat immediately. Profile bootstrap (Firestore -> local customers.json -> ask name)
+                    # is handled inside ADKHelper.
 
                     # --------------------------------------------------
-                    # AUTHENTICATION CHECK
+                    # NAME CHANGE FLOW GUARD (legacy)
                     # --------------------------------------------------
-                    is_auth = self.adk_helper.session_helper.get_auth_status(user_id)
-                    onboarding_status = self.adk_helper.session_helper.get_onboarding_status(user_id)
-                    logger.info(
-                        "auth.status",
-                        user_id=user_id,
-                        is_auth=is_auth,
-                        onboarding_status=onboarding_status,
-                        msg_type=mtype,
-                        inbound_key=inbound_key,
-                    )
-
-                    existing_external = self.adk_helper.get_external_user_id(user_id)
-                    if existing_external and not is_auth:
-                        logger.info(
-                            "Auth: existing external_user_id found, marking as authenticated",
-                            wa_user_id=user_id,
-                            external_user_id=existing_external,
-                        )
-                        self.adk_helper.session_helper.set_auth_status(user_id, True)
-                        self.adk_helper.session_helper.set_onboarding_status(user_id, None)
-                        is_auth = True
-
-                    if not is_auth:
-                        if onboarding_status in {"awaiting_invoice", "verifying_invoice", "awaiting_invoice_1", "awaiting_invoice_2"}:
-                            
-                            rejection_msg = self.adk_helper._get_onboarding_invoice_prompt()
-                            await self._send_onboarding_sequence(
+                    # For YTL we use the simpler name prompt in ADKHelper. Keep this guard only for non-YTL tenants.
+                    if (os.getenv("TENANT_ID") or "").strip().lower() != "ytl":
+                        if self.adk_helper.get_name_change_state(user_id) and mtype not in {"text", "audio"}:
+                            reminder = "Before we continue, please send your full name as a text or voice note."
+                            self.adk_helper._send_text_once(
                                 user_id,
-                                rejection_msg,
-                                step=1,
+                                reminder,
                                 reply_to_message_id=replied_to_id,
                             )
-                            results.append({
-                                "name": name,
-                                "message": "onboarding_prompt",
-                                "step": 1,
-                                "status": "awaiting_invoice",
-                            })
+                            results.append(
+                                {
+                                    "name": name,
+                                    "message": "name_capture_pending_blocked_non_text",
+                                    "blocked_type": mtype,
+                                }
+                            )
                             continue
-
-                        logger.info(
-                            "Auth check: User not yet authenticated. Bootstrapping from API...",
-                            wa_user_id=user_id,
-                        )
-                        external_id = await asyncio.to_thread(
-                            self.adk_helper._bootstrap_user_from_api,
-                            user_id
-                        )
-
-                        if not external_id:
-                            logger.warning(
-                                "Auth check rejected. No canonical user_id available.",
-                                wa_user_id=user_id,
-                            )
-                            self.adk_helper.session_helper.set_onboarding_status(
-                                user_id,
-                                "awaiting_invoice",
-                                reason="not_found"
-                            )
-                            logger.info(
-                                "onboarding.status.set",
-                                user_id=user_id,
-                                status="awaiting_invoice",
-                                reason="not_found",
-                            )
-                            rejection_msg = self.adk_helper._get_onboarding_invoice_prompt()
-                            await self._send_onboarding_sequence(
-                                user_id,
-                                rejection_msg,
-                                step=1,
-                                reply_to_message_id=replied_to_id,
-                            )
-                            results.append({
-                                "name": name,
-                                "message": "onboarding_prompt",
-                                "step": 1,
-                                "status": "awaiting_invoice",
-                            })
-                            continue
-
-                        logger.info(
-                            "Auth check success; canonical user_id resolved.",
-                            wa_user_id=user_id,
-                            external_user_id=external_id,
-                        )
-                        self.adk_helper.session_helper.set_auth_status(user_id, True)
-                        self.adk_helper.session_helper.set_onboarding_status(user_id, None)
-
-                    # --------------------------------------------------
-                    # NAME CAPTURE GUARD (post-verification)
-                    # --------------------------------------------------
-                    if self.adk_helper.get_name_change_state(user_id) and mtype not in {"text", "audio"}:
-                        reminder = (
-                            "Aage barhne se pehle baraye meherbani apna poora naam "
-                            "text ya voice note mein bhej dein."
-                        )
-                        self.adk_helper._send_text_once(
-                            user_id,
-                            reminder,
-                            reply_to_message_id=replied_to_id,
-                        )
-                        results.append(
-                            {
-                                "name": name,
-                                "message": "name_capture_pending_blocked_non_text",
-                                "blocked_type": mtype,
-                            }
-                        )
-                        continue
 
                     # --------------------------------------------------
                     # TEXT  (buffered + batched)
@@ -2699,7 +2590,8 @@ class RouteHandler:
                             logger.warning("conversation_id.image_failed", user_id=user_id, error=str(e))
                             conv_id_for_image = user_id
 
-                        if not self.adk_helper.session_helper.get_auth_status(user_id):
+                        # YTL demo: no authentication / no invoice onboarding.
+                        if (os.getenv("TENANT_ID") or "").strip().lower() != "ytl" and not self.adk_helper.session_helper.get_auth_status(user_id):
                             handled = self._handle_invoice_onboarding_image(
                                 user_id,
                                 media_id=media_id,

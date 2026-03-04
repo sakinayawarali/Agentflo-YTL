@@ -1178,40 +1178,41 @@ class ADKHelper:
                 self._send_text_once(wa_user_id, busy_msg, reply_to_message_id=reply_to_message_id)
                 return busy_msg
 
-            # --- 1. AUTHENTICATION + CANONICAL USER MAPPING ---
-            is_auth = self.session_helper.get_auth_status(wa_user_id)
+            # --- 1. NO AUTHENTICATION (YTL demo) ---
+            # All users can chat. We only do a lightweight profile bootstrap:
+            # - If we have customer metadata in Firestore, use it.
+            # - Else try local customers.json via search_customer_by_phone (through _ensure_customer_metadata).
+            # - If still missing name, ask once and store it.
             onboarding_status = self.session_helper.get_onboarding_status(wa_user_id)
 
-            existing_external = self.get_external_user_id(wa_user_id)
-            if existing_external and not is_auth:
-                logger.info(
-                    "Auth: existing external_user_id found, marking as authenticated",
-                    wa_user_id=wa_user_id,
-                    external_user_id=existing_external,
-                )
-                self.session_helper.set_auth_status(wa_user_id, True)
-                self.session_helper.set_onboarding_status(wa_user_id, None)
-                is_auth = True
+            # If we're waiting for the user's name, treat this message as the name and store it.
+            if onboarding_status == "awaiting_name":
+                proposed = " ".join((message or "").strip().split())
+                # Keep it simple: accept any non-empty text up to 60 chars as name.
+                if proposed:
+                    meta = {"customer_name": proposed}
+                    self._persist_customer_metadata(wa_user_id, meta)
+                    self.session_helper.set_onboarding_status(wa_user_id, None)
+                else:
+                    self._send_text_once(
+                        wa_user_id,
+                        "Please share your name (e.g., \"Sakina\").",
+                        reply_to_message_id=reply_to_message_id,
+                    )
+                    return "Please share your name (e.g., \"Sakina\")."
 
-            if not is_auth:
-                if onboarding_status in {"awaiting_invoice", "verifying_invoice", "awaiting_invoice_1", "awaiting_invoice_2"}:
-                    rejection_msg = self._get_onboarding_invoice_prompt()
-                    self._send_text_once(wa_user_id, rejection_msg, reply_to_message_id=reply_to_message_id)
-                    return rejection_msg
+            # Ensure we have best-effort metadata (Firestore first, then local dummy data)
+            try:
+                await asyncio.to_thread(self._ensure_customer_metadata, wa_user_id)
+            except Exception:
+                pass
 
-                logger.info("Auth check: User not yet authenticated. Bootstrapping from API...", wa_user_id=wa_user_id)
-                external_id = await asyncio.to_thread(self._bootstrap_user_from_api, wa_user_id)
-
-                if not external_id:
-                    logger.warning("Auth check rejected. No canonical user_id available.", wa_user_id=wa_user_id)
-                    self.session_helper.set_onboarding_status(wa_user_id, "awaiting_invoice", reason="not_found")
-                    rejection_msg = self._get_onboarding_invoice_prompt()
-                    self._send_text_once(wa_user_id, rejection_msg, reply_to_message_id=reply_to_message_id)
-                    return rejection_msg
-
-                logger.info("Auth check success; canonical user_id resolved.", wa_user_id=wa_user_id, external_user_id=external_id)
-                self.session_helper.set_auth_status(wa_user_id, True)
-                self.session_helper.set_onboarding_status(wa_user_id, None)
+            meta_now = self._get_stored_customer_metadata(wa_user_id)
+            if not (meta_now.get("customer_name") or "").strip():
+                self.session_helper.set_onboarding_status(wa_user_id, "awaiting_name", reason="missing_name")
+                msg = "Hi! What’s your name?"
+                self._send_text_once(wa_user_id, msg, reply_to_message_id=reply_to_message_id)
+                return msg
 
             # --- 2. SESSION ROTATION CHECK (single, unified) ---
             # Rotate when: pending-end timer matured OR user silent >= SESSION_INACTIVITY_SEC (default 12 h)
