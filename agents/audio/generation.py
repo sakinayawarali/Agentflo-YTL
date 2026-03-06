@@ -461,6 +461,12 @@ def synthesize_elevenlabs_single(
     if not text or not text.strip():
         return {"success": False, "error": "Empty text"}
 
+    ffmpeg = _ffmpeg_bin()
+    # Request WAV from API when we have ffmpeg to avoid double FFmpeg pass (decode mp3→wav then wav→ogg)
+    request_fmt = output_format or cfg["ELEVEN_OUTPUT_FORMAT"]
+    if ffmpeg:
+        request_fmt = "wav_16000"
+
     script = make_full_audio_script(text)
     if extra_aliases:
         for k, alias in extra_aliases.items():
@@ -475,7 +481,7 @@ def synthesize_elevenlabs_single(
         vn_text_tagged,
         voice_id=voice_id or cfg["ELEVEN_VOICE_ID"],
         model_id=model_id or cfg["ELEVEN_MODEL_ID"],
-        output_format=(output_format or cfg["ELEVEN_OUTPUT_FORMAT"]),
+        output_format=request_fmt,
         timeout=cfg["VN_TTS_TIMEOUT"],
         language_code=language_code,
         pronunciation_dictionary_ids=pronunciation_dict_ids or (
@@ -493,7 +499,7 @@ def synthesize_elevenlabs_single(
         dec_budget = min(decode_to, max(TTS_FFMPEG_MIN_TIMEOUT, int(_time_left(deadline_ts))))
         enc_budget = min(enc_budget, max(TTS_FFMPEG_MIN_TIMEOUT, int(_time_left(deadline_ts))))
         
-        if (mime or "").startswith("audio/wav") or str(output_format or "").startswith("wav"):
+        if (mime or "").startswith("audio/wav") or str(request_fmt or "").startswith("wav"):
             wav = audio_bytes
         else:
             ext_hint = "mp3" if "mpeg" in (mime or "") else "bin"
