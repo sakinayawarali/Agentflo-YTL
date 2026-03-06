@@ -37,11 +37,12 @@ class VoiceNoteProcessor:
         """
         self.language = language.lower()
         self.tts_max_chars = int(os.getenv("TTS_MAX_CHARS", "150000"))
-        self.enable_llm_reformat = os.getenv("VN_LLM_REFORMAT_ENABLED", "true").lower() == "true"
+        # VN LLM reformat is opt-in (adds latency + variability). Enable explicitly via env.
+        self.enable_llm_reformat = os.getenv("VN_LLM_REFORMAT_ENABLED", "false").lower() == "true"
 
-        # YTL: LLM VN reformat enabled by default (opt-out via YTL_VN_LLM_REFORMAT_ENABLED=false).
+        # YTL: keep LLM VN reformat OFF by default (opt-in via YTL_VN_LLM_REFORMAT_ENABLED=true).
         tenant = (os.getenv("TENANT_ID") or "").strip().lower()
-        if tenant == "ytl" and os.getenv("YTL_VN_LLM_REFORMAT_ENABLED", "true").lower() != "true":
+        if tenant == "ytl" and os.getenv("YTL_VN_LLM_REFORMAT_ENABLED", "false").lower() != "true":
             if self.enable_llm_reformat:
                 logger.info("vn_processor.ytl_config_applied", tenant=tenant, llm_reformat_enabled=False)
             self.enable_llm_reformat = False
