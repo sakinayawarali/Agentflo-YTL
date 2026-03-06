@@ -56,8 +56,11 @@ WA_GRAPH_URL = (
     f"https://graph.facebook.com/v23.0/{WA_PHONE_NUMBER_ID}/messages" if WA_PHONE_NUMBER_ID else None
 )
 
-# Voice reaction UX toggle + timing
-VM_REACTION_ENABLED = os.getenv("VM_REACTION", "false").lower() == "true"
+# Read receipts (Cloud API): mark inbound messages as read
+READ_RECEIPTS_ENABLED = os.getenv("READ_RECEIPTS_ENABLED", "true").lower() == "true"
+
+# Voice reaction UX toggle + timing: 👂 (listening) then ✅ (tick) on voice notes
+VM_REACTION_ENABLED = os.getenv("VM_REACTION", "true").lower() == "true"
 VM_REACTION_SWAP_SEC = 3.5
 
 # --- CLOUD TASKS CONFIG ---
@@ -1218,8 +1221,9 @@ class RouteHandler:
     # --- NEW: mark inbound message as read on the Business number ---
     def _mark_read(self, message_id: str):
         """
-        Marks a user inbound message as READ and shows typing indicator.
+        Marks a user inbound message as READ (Cloud API read receipts) and shows typing indicator.
         The typing indicator will auto-dismiss after 25 seconds or when you send a response.
+        Controlled by READ_RECEIPTS_ENABLED (default true).
         """
         if self.is_twilio:
             return
@@ -2207,8 +2211,8 @@ class RouteHandler:
                             self.inbound_store.mark_stale(user_id, inbound_key)
                             continue
 
-                    # --- Mark inbound as read ---
-                    if not self.is_twilio:
+                    # --- Mark inbound as read (Cloud API read receipts) ---
+                    if not self.is_twilio and READ_RECEIPTS_ENABLED:
                         self._mark_read(inbound_key)
 
                     # --------------------------------------------------

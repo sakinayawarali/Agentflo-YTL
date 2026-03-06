@@ -18,9 +18,9 @@ import subprocess
 import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FutureTimeoutError
-from typing import Optional, Dict, Tuple, List
+from typing import Optional, Dict, Tuple, List, Any
 
-import requests
+import requests  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 
 from utils.logging import logger
@@ -48,7 +48,7 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
-def _eleven_defaults() -> Dict[str, object]:
+def _eleven_defaults() -> Dict[str, Any]:
     """Get ElevenLabs configuration from environment."""
     return {
         "ELEVEN_API_KEY": _env("ELEVENLABS_API_KEY"),
@@ -166,7 +166,8 @@ def split_text_into_chunks(text: str, target_chars: int) -> List[str]:
             out.append(ch)
             continue
         words = ch.split()
-        seg, cnt = [], 0
+        seg: List[str] = []
+        cnt = 0
         for w in words:
             wlen = len(w) + (1 if cnt > 0 else 0)
             if cnt + wlen > target_chars:
@@ -709,13 +710,14 @@ class TTSGenerator:
         self.eleven_api_key = os.getenv("ELEVENLABS_API_KEY", "")
         self.eleven_voice_id = os.getenv("ELEVENLABS_VOICE_ID", "")
         self.eleven_model_id = os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
-        self.tts_global_deadline_sec = float(os.getenv("TTS_GLOBAL_DEADLINE_SEC", "15"))
+        # Realistic for webhook budget (e.g. Cloud Run); VN_TTS_TIMEOUT is clamped by this.
+        self.tts_global_deadline_sec = float(os.getenv("TTS_GLOBAL_DEADLINE_SEC", "10"))
         self.enable_parallel = os.getenv("VN_PARALLEL_ENABLED", "true").lower() == "true"
         
         # Session for HTTP requests
         self.session = requests.Session()
         try:
-            from requests.adapters import HTTPAdapter
+            from requests.adapters import HTTPAdapter  # type: ignore[import-untyped]
             from urllib3.util.retry import Retry
             adapter = HTTPAdapter(
                 pool_connections=10,
@@ -751,6 +753,19 @@ class TTSGenerator:
         
         start_ts = time.perf_counter()
         deadline_ts = start_ts + self.tts_global_deadline_sec
+        time_left = deadline_ts - time.perf_counter()
+        if time_left <= 0:
+            logger.warning(
+                "tts.deadline_already_expired",
+                time_left_sec=round(time_left, 2),
+                deadline_sec=self.tts_global_deadline_sec,
+            )
+        elif time_left < 3:
+            logger.info(
+                "tts.low_deadline_budget",
+                time_left_sec=round(time_left, 2),
+                deadline_sec=self.tts_global_deadline_sec,
+            )
         
         # Try parallel chunked first (if enabled and text is long enough)
         if self.enable_parallel and len(text) > 300:
