@@ -13,11 +13,7 @@ from typing import Optional
 from utils.logging import logger
 
 # Import from audio utilities
-from agents.audio.utils import (
-    clean_store_name_for_vn,
-    int_to_urdu_words,
-    number_to_urdu_words,
-)
+from agents.audio.utils import clean_store_name_for_vn
 
 try:
     from google import genai
@@ -31,21 +27,14 @@ class VoiceNoteProcessor:
     Process and format text for voice note generation.
     """
     
-    def __init__(self, language: str = "ur", genai_client=None, model: str = None):
+    def __init__(self, language: str = "en", genai_client=None, model: str = None):
         """
         Initialize processor with explicit Google AI (Gemini) API key auth.
         """
         self.language = language.lower()
         self.tts_max_chars = int(os.getenv("TTS_MAX_CHARS", "150000"))
-        # VN LLM reformat is opt-in (adds latency + variability). Enable explicitly via env.
-        self.enable_llm_reformat = os.getenv("VN_LLM_REFORMAT_ENABLED", "false").lower() == "true"
-
-        # YTL: keep LLM VN reformat OFF by default (opt-in via YTL_VN_LLM_REFORMAT_ENABLED=true).
-        tenant = (os.getenv("TENANT_ID") or "").strip().lower()
-        if tenant == "ytl" and os.getenv("YTL_VN_LLM_REFORMAT_ENABLED", "false").lower() != "true":
-            if self.enable_llm_reformat:
-                logger.info("vn_processor.ytl_config_applied", tenant=tenant, llm_reformat_enabled=False)
-            self.enable_llm_reformat = False
+        # VN LLM reformat is enabled by default (can be disabled via env).
+        self.enable_llm_reformat = os.getenv("VN_LLM_REFORMAT_ENABLED", "true").lower() == "true"
 
         # Always target the Google AI Studio endpoint with an API key (non-Vertex path)
         self.api_key = (
@@ -89,7 +78,7 @@ class VoiceNoteProcessor:
     
     def shape_for_tts(self, text: str) -> str:
         """
-        Normalize text for natural TTS reading.
+        Normalize text for natural TTS reading (English-only agent).
         """
         if not text:
             return ""
@@ -120,7 +109,7 @@ class VoiceNoteProcessor:
         # 3) Collapse line breaks → spaces
         s = re.sub(r'\s+', ' ', s).strip()
         
-        # 4) Convert order lines WITH total to spoken format
+        # 4) Convert order lines WITH total to spoken format (English)
         # Pattern: "Item × 6 = 2145.48 Ruppay"
         line_pattern = re.compile(
             r'(?P<item>.+?)\s*[×xX]\s*(?P<qty>\d+)\s*=\s*(?P<total>[0-9]+(?:\.[0-9]+)?)\s*(?:Ruppay|PKR|Rs\.?)',
@@ -132,10 +121,7 @@ class VoiceNoteProcessor:
             qty = m.group("qty")
             total_raw = m.group("total")
             
-            # quantity as integer words
-            qty_words = int_to_urdu_words(int(qty))
-            
-            # round total to whole rupees
+            # Round total to whole rupees (keep digits)
             try:
                 total_int = int(round(float(total_raw)))
             except Exception:
@@ -144,14 +130,13 @@ class VoiceNoteProcessor:
                 else:
                     total_int = total_raw
             
-            # convert amount to Urdu words
+            # VN style (English): "Item, quantity X, total Y rupees"
             if isinstance(total_int, int):
-                total_words = int_to_urdu_words(total_int)
+                total_display = str(total_int)
             else:
-                total_words = number_to_urdu_words(str(total_int))
-            
-            # VN style: "Item, kul X, Y روپے kay"
-            return f"{item} kul {qty_words}, {total_words} ruppay kay"
+                total_display = str(total_int)
+
+            return f"{item}, quantity {qty}, total {total_display} rupees"
         
         s = line_pattern.sub(_line_repl, s)
         
@@ -163,9 +148,8 @@ class VoiceNoteProcessor:
         
         def _qty_only_repl(m):
             item = m.group("item").strip(" -*•")
-            qty = int(m.group("qty"))
-            qty_words = int_to_urdu_words(qty)
-            return f"{item} kul {qty_words}"
+            qty = m.group("qty")
+            return f"{item}, quantity {qty}"
         
         s = qty_only_pattern.sub(_qty_only_repl, s)
         
@@ -177,9 +161,12 @@ class VoiceNoteProcessor:
         )
         
         def _currency_repl(m):
-            amount = float(m.group("amount"))
-            words = number_to_urdu_words(str(amount))
-            return words
+            amount_raw = m.group("amount")
+            try:
+                amount_int = int(round(float(amount_raw)))
+            except Exception:
+                amount_int = amount_raw
+            return f"{amount_int} rupees"
         
         s = currency_pattern.sub(_currency_repl, s)
         
@@ -272,8 +259,8 @@ class VoiceNoteProcessor:
         # Step 2: Pattern-based formatting FIRST (needs digits to match)
         text = self.shape_for_tts(text)   # ← × qty = total patterns
         
-        # Step 3: Convert remaining bare digits to Urdu words LAST
-        text = self._shape_text_for_tts(text)  # ← number_to_urdu_words
+        # Step 3: Final numeric cleanup for TTS (English units, Rs -> rupees, ranges)
+        text = self._shape_text_for_tts(text)
         
         elapsed = time.perf_counter() - start_ts
         try:
@@ -294,7 +281,7 @@ class VoiceNoteProcessor:
     
     def _get_language_prompt(self, lang_code: Optional[str] = None) -> str:
         """Get language-specific system prompt for LLM reformat."""
-        lang = (lang_code or self.language or "ur").lower()
+        lang = (lang_code or self.language or "en").lower()
         
         if lang == "en":
             return """
@@ -453,16 +440,16 @@ EVERYONE IS BHAI, BHAI JAAN OR BHAIYYA. NO ONE IS BAJJI
 OUTPUT: Return ONLY the voice-note script. No tags, no extra formatting.
 """
         
-        else:  # default: Urdu / Roman Urdu
+        else:
+            # Default: fall back to the English VN prompt so this agent remains English-only.
             return """
-You are converting Ayesha's WhatsApp text into natural voice note scripts for Urdu TTS.
+You are converting WhatsApp text into natural ENGLISH voice-note scripts for TTS.
 
 CRITICAL RULES:
 1. LANGUAGE
-- Output in Roman Urdu with light English.
-- Use only Latin characters (no Urdu or Arabic script).
-- Sound like a friendly sales agent speaking to a shop owner.
-- Whenever you see text like FHC CHOCOLATE CHIPS Packet understand that FHC stands for Farmhouse cookies, so say that. For WWS that means Whole Wheat Slices. If you dont know what a short form means, skip it.
+- Output MUST be in clear, simple English only.
+- Do NOT use Urdu or Roman Urdu words (no "bhai", "yaar", "acha", etc.).
+- Use only Latin characters.
 
 2. FORMATTING
 - Remove ALL:
@@ -472,28 +459,25 @@ CRITICAL RULES:
 - Do NOT mention "bullet", "line 1", or similar meta language.
 
 3. FLOW
-- Make it conversational, like a short WhatsApp voice note.
-- Example style:
-    - "acha bhai, main bata rahi hoon, aapke order mein ye items hain..."
-- Use commas and short pauses naturally, but do not overdo it.
+- Make the output sound like a short spoken voice note.
+- Use short, natural sentences.
+- Keep the same information as the input, but make it clearer and smoother.
 
 4. NUMBERS & CURRENCY
-- Keep numbers as digits (e.g., "7", "1020") so they can be converted later.
-- For PKR, Rs, rupee, etc., use "rupay" in Roman Urdu.
-- Add commas to separate quantity from price so TTS does not run them together.
-- DO NOT SAY DECIMALS ALWAYS ROUND UP NUMBERS eg if its 1020.9 its 1021
+- Keep numeric values as digits (e.g., "1020").
+- For PKR, "Rs", "rupees", normalize to "rupees" in the output.
+- Add commas and pauses where needed for clarity, but do not overdo it.
+- Do not say decimal points. Please make sure to round it up so if its 1029.8 its 1030
 
-  5. SUMMARIZATION (CRITICAL)
-    - If the order has more than 3 SKU lines, mention ONLY the first 3 items with quantities.
-    - Then say: "...aur baaki items ka detail aapko text mein mil jayega."
-    - ALWAYS mention the total order value and total discount at the end.
-    - Do NOT read every single SKU — this is a voice note, not a receipt.
-
-DO NOT SAY SALAM EVERY TIME. YOUVE SAID IT IN GREEING ALREADY
-EVERYONE IS BHAI, BHAI JAAN OR BHAIYYA. NO ONE IS BAJJI
+5. CONTENT PRESERVATION
+- Do NOT drop important details such as:
+    - Items, quantities, prices
+    - Totals, discounts, promotions
+    - Delivery or payment information
+- You may compress obvious repetition, but preserve the meaning.
 
 OUTPUT:
-- Return ONLY the rewritten Roman Urdu voice-note script.
+- Return ONLY the rewritten English voice-note script.
 - No explanations, no tags, no extra formatting.
 """
     
@@ -503,56 +487,45 @@ OUTPUT:
     
     def _shape_text_for_tts(self, text: str) -> str:
         """
-        Regex-based cleanup to ensure TTS reads numbers and currencies naturally in Urdu.
+        Regex-based cleanup to ensure TTS reads numbers, currencies and units naturally in English.
         """
         if not text: 
             return ""
             
         s = text
         
-        # 1) Currency: "Rs. 500" -> "500 rupay"
+        # 1) Currency: "Rs. 500" -> "500 rupees"
         # Handle Rs, PKR, Rs., etc.
-        s = re.sub(r'(?i)\b(?:Rs\.?|PKR)\s*(\d+(?:,\d+)*)', r'\1 rupay', s)
+        s = re.sub(r'(?i)\b(?:Rs\.?|PKR)\s*(\d+(?:,\d+)*)', r'\1 rupees', s)
+
+        # 1a) Malaysian currency: ensure MYR is spoken as "the Malaysian currency, ringgit"
+        # "MYR 500" or "500 MYR" or standalone "MYR"
+        def _myr_amount_repl(match):
+            amount = match.group(1)
+            return f"{amount} the Malaysian currency, ringgit"
+
+        s = re.sub(r'(?i)\bMYR\s*(\d+(?:,\d+)*)', _myr_amount_repl, s)
+        s = re.sub(r'(?i)(\d+(?:,\d+)*)\s*MYR\b', _myr_amount_repl, s)
+        s = re.sub(r'(?i)\bMYR\b', "the Malaysian currency, ringgit", s)
         
         # 2) Weight/Units: "5kg" -> "5 kilo"
         s = re.sub(r'(?i)(\d+)\s*kg\b', r'\1 kilo', s)
         s = re.sub(r'(?i)(\d+)\s*gm?s?\b', r'\1 gram', s)
         s = re.sub(r'(?i)(\d+)\s*ltr?s?\b', r'\1 liter', s)
         
-        # 3) Normalize decimals "1.5" -> "1 point 5" (if not handled by num converter)
-        # Actually number_to_urdu_words handles this, but let's prep strict patterns if needed
+        # 3) "x" for quantity: "3x" -> "3 pieces"
+        s = re.sub(r'(?i)\b(\d+)\s*[xX]\b', r'\1 pieces', s)
         
-        # 4) Convert English digits to Urdu words if strict Urdu script is enforced,
-        # but for Roman Urdu TTS (ElevenLabs), digits usually work fine. 
-        # However, "500" reads as "five hundred" in some voices unless spelled out.
-        # We will attempt to convert bare numbers to Roman Urdu phonetics.
+        # 4) Range "5-10" -> "5 to 10"
+        s = re.sub(r'(\d+)\s*-\s*(\d+)', r'\1 to \2', s)
         
-        def _convert_match(match):
-            num_str = match.group(0)
-            return number_to_urdu_words(num_str)
-
-        # 5) "x" for quantity: "3x" -> "3 adad" or "3 pieces"
-        s = re.sub(r'(?i)\b(\d+)\s*[xX]\b', r'\1 adad', s)
+        # 5) Date/Time "10/12" (Skipping complex date logic for now, basic regex)
         
-        # 6) Range "5-10" -> "5 say 10"
-        s = re.sub(r'(\d+)\s*-\s*(\d+)', r'\1 say \2', s)
-        
-        # 7) Date/Time "10/12" (Skipping complex date logic for now, basic regex)
-        
-        # 8) Clean up any "=" signs
+        # 6) Clean up any "=" signs
         s = re.sub(r'\s*=\s*', ' ', s)
         
-        # 9) Final cleanup
+        # 7) Final cleanup
         s = re.sub(r'\s+', ' ', s).strip()
-
-        # 10) Convert remaining numbers to words to ensure Urdu pronunciation
-        # e.g. "500" -> "paanch sau"
-        # We use a negative lookbehind/ahead to skip numbers already part of words if needed,
-        # but straightforward substitution is usually safest for TTS.
-        
-        # Note: We skip this if the text looks like pure English, but assuming Urdu/Roman context:
-        s = re.sub(r'\b\d+(?:\.\d+)?\b', _convert_match, s)
-        
         return s
             
     # ========================================================================
