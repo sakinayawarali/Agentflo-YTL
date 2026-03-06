@@ -2179,6 +2179,14 @@ class RouteHandler:
                         has_context=bool(replied_to_id),
                     )
 
+                    # For Cloud API users, seed Firestore with the WhatsApp profile name
+                    # the first time we ever see this user_id.
+                    try:
+                        if not self.is_twilio:
+                            self.adk_helper.maybe_store_whatsapp_profile_name(user_id, name)
+                    except Exception as e:
+                        logger.warning("whatsapp_name.seed_failed", user_id=user_id, error=str(e))
+
                     # --- Inbound idempotency + staleness guard ---
                     wa_ts = message.get("timestamp")
                     try:

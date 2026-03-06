@@ -202,7 +202,9 @@ def split_text_into_chunks(text: str, target_chars: int) -> List[str]:
 
 EMOTION_TAGS = {
     "excited": "[excited]",
-    "friendly": "[friendly]",
+    # Default path: do not inject a literal "[friendly]" tag at the start of VNs.
+    # Keep other emotion tags available for future variants if needed.
+    "friendly": "",
     "empathetic": "[empathetic]",
     "calm": "[calm]",
     "conversational": "[conversational]",
