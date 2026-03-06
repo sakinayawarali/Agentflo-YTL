@@ -1103,7 +1103,8 @@ class RouteHandler:
             return False
 
         body_text = (
-            "Please tap the button below to share your site location pin so we can plan the truck route correctly."
+            "Thanks for confirming the order. Please reply with the full delivery address for this site, "
+            "and tap the button below to share your site location pin so we can plan the truck route correctly."
         )
 
         payload = {
@@ -3318,7 +3319,7 @@ class RouteHandler:
                                 )
                                 self.adk_helper._send_text_once(
                                     user_id,
-                                    "Bhai, aap already ek baar respond kar chuke hain. Agar kuch change karna hai to bata dein.",
+                                    "You have already responded to these buttons. If you need to change anything in the order, just tell me in a message.",
                                     reply_to_message_id=replied_to_id,
                                 )
                                 results.append(
@@ -3335,14 +3336,15 @@ class RouteHandler:
 
                             # Map button IDs to synthetic text
                             if button_id == "ORDER_CONFIRM_YES":
-                                synthetic_text = "haan, order place kar do"
-                                # YTL: after explicit order confirmation, prompt for location pin via interactive message.
+                                # Treat as an explicit confirmation in English so the agent continues in English only.
+                                synthetic_text = "yes, please confirm and place this order"
+                                # YTL: after explicit order confirmation, prompt for address + site location pin via interactive message.
                                 try:
                                     self._send_location_request(user_id, replied_to_id)
                                 except Exception as e:
                                     logger.warning("wa.location_request.trigger_failed", user_id=user_id, error=str(e))
                             elif button_id == "ORDER_CONFIRM_NO":
-                                synthetic_text = "nahi, order abhi final nahi hai, aur items change karne hain"
+                                synthetic_text = "no, this order is not final yet, I want to change the items"
                             else:
                                 synthetic_text = button_title or "button press"
 
