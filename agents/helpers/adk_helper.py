@@ -31,8 +31,8 @@ from typing import Optional, Dict, Tuple, Any, List
 from agents.tools.order_draft_tools import send_product_catalogue
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from dotenv import load_dotenv
-from google.adk.runners import Runner
-from google.adk.sessions import VertexAiSessionService
+from google.adk.runners import Runner  # type: ignore[import-untyped]
+from google.adk.sessions import VertexAiSessionService  # type: ignore[import-untyped]
 from google.cloud import firestore
 from google.api_core.exceptions import AlreadyExists
 from agents.audio.processing import VoiceNoteProcessor
@@ -1860,8 +1860,10 @@ class ADKHelper:
             def _runner():
                 try:
                     asyncio.run(self.greeting_vn_cache.send_greeting_vn(user_id))
+                except asyncio.CancelledError as e:
+                    logger.warning("greeting_vn_bg_thread.cancelled", user_id=user_id, error=str(e))
                 except Exception as e:
-                    logger.error("greeting_vn_bg_thread.error", error=str(e))
+                    logger.error("greeting_vn_bg_thread.error", user_id=user_id, error=str(e))
             threading.Thread(target=_runner, daemon=True).start()
 
         # ------------------------------------------------------------------

@@ -146,9 +146,10 @@ class GreetingVNCache:
                     reply_to_message_id,
                 )
             
-            # 3. Cache miss - populate cache first, then send only from cache
+            # 3. Cache miss - populate cache first, then send only from cache.
+            # Shield so VN generation survives request lifecycle (e.g. Cloud Run cancelling coroutines).
             logger.info("greeting_vn.cache_miss.populate_then_send", user_id=user_id)
-            await self.populate_greeting_cache(user_id, force=False)
+            await asyncio.shield(self.populate_greeting_cache(user_id, force=False))
             cached_vn = self._get_next_variant(user_id)
             if not cached_vn:
                 logger.warning("greeting_vn.cache_miss.still_empty", user_id=user_id)
@@ -162,8 +163,14 @@ class GreetingVNCache:
                 reply_to_message_id,
             )
             
-        except Exception as e:
-            logger.error("greeting_vn.error", user_id=user_id, error=str(e), exc_info=True)
+        except (Exception, asyncio.CancelledError) as e:
+            logger.error(
+                "greeting_vn.error",
+                user_id=user_id,
+                error=str(e),
+                exc_info=not isinstance(e, asyncio.CancelledError),
+                cancelled=isinstance(e, asyncio.CancelledError),
+            )
             return False
     
     async def populate_greeting_cache(
@@ -175,6 +182,7 @@ class GreetingVNCache:
         Populate greeting cache with MAX_VARIANTS greeting VNs.
         """
         start_ts = time.perf_counter()
+        to_generate = 0  # so except block can safely reference it
         try:
             meta_ref = self._user_cache_meta_ref(user_id)
             meta_doc = meta_ref.get()
@@ -254,11 +262,12 @@ class GreetingVNCache:
                         return True
                     logger.warning("greeting_cache.generation_failed", user_id=user_id)
                     return False
-                except Exception as e:
+                except (Exception, asyncio.CancelledError) as e:
                     logger.error(
                         "greeting_cache.variant_error",
                         user_id=user_id,
                         error=str(e),
+                        cancelled=isinstance(e, asyncio.CancelledError),
                     )
                     return False
 
@@ -290,13 +299,14 @@ class GreetingVNCache:
                 "failed": failed,
             }
         
-        except Exception as e:
+        except (Exception, asyncio.CancelledError) as e:
             elapsed = time.perf_counter() - start_ts
             logger.error(
                 "greeting_cache.populate_error",
                 user_id=user_id,
                 error=str(e),
                 elapsed_sec=round(elapsed, 2),
+                cancelled=isinstance(e, asyncio.CancelledError),
             )
             return {"generated": 0, "skipped": 0, "failed": to_generate}
     
@@ -592,6 +602,7 @@ Requirements:
             (audio_bytes, meta_dict) or (None, {})
         """
         try:
+            logger.info("greeting_vn.tts_start", text_len=len(script))
             t0 = time.perf_counter()
             preferred_bytes, meta, mp3_bytes = await self.tts_generator.generate_audio(script)
             elapsed = time.perf_counter() - t0
@@ -616,8 +627,12 @@ Requirements:
             )
             return None, {}
             
-        except Exception as e:
-            logger.error("greeting_vn.generation_exception", error=str(e))
+        except (Exception, asyncio.CancelledError) as e:
+            logger.error(
+                "greeting_vn.generation_exception",
+                error=str(e),
+                cancelled=isinstance(e, asyncio.CancelledError),
+            )
             return None, {}
     
     async def _send_vn(
