@@ -69,6 +69,11 @@ def _eleven_defaults() -> Dict[str, Any]:
     }
 
 
+# Minimum timeouts so retries/fallbacks aren't doomed when global deadline is tight
+TTS_HTTP_MIN_TIMEOUT = 8   # seconds; ElevenLabs needs at least this per request
+TTS_FFMPEG_MIN_TIMEOUT = 5  # seconds; decode/encode/concat floor
+
+
 def _time_left(deadline_ts: Optional[float], floor: float = 0.0) -> float:
     """Seconds remaining until deadline_ts (based on perf_counter())."""
     if not deadline_ts:
@@ -302,8 +307,8 @@ def eleven_tts_http_bytes(
             for pid in pronunciation_dictionary_ids
         ]
 
-    # Clamp to remaining budget
-    http_timeout = int(min(timeout, max(2, _time_left(deadline_ts))))
+    # Clamp to remaining budget; floor ensures retries/fallbacks get a realistic timeout
+    http_timeout = int(min(timeout, max(TTS_HTTP_MIN_TIMEOUT, _time_left(deadline_ts))))
 
     try:
         resp = requests.post(
@@ -485,8 +490,8 @@ def synthesize_elevenlabs_single(
     if ffmpeg:
         decode_to = int(cfg["VN_FFMPEG_DECODE_TIMEOUT"])
         enc_budget = int(cfg["VN_FFMPEG_ENCODE_TIMEOUT"])
-        dec_budget = min(decode_to, max(2, int(_time_left(deadline_ts))))
-        enc_budget = min(enc_budget, max(2, int(_time_left(deadline_ts))))
+        dec_budget = min(decode_to, max(TTS_FFMPEG_MIN_TIMEOUT, int(_time_left(deadline_ts))))
+        enc_budget = min(enc_budget, max(TTS_FFMPEG_MIN_TIMEOUT, int(_time_left(deadline_ts))))
         
         if (mime or "").startswith("audio/wav") or str(output_format or "").startswith("wav"):
             wav = audio_bytes
@@ -609,7 +614,7 @@ def synthesize_elevenlabs_parallel(
                     ext_hint = "mp3" if "mpeg" in (mime or "") else "bin"
                     wav = bytes_to_wav16k_mono(
                         b, ffmpeg, ext_hint,
-                        timeout_sec=min(int(decode_to), max(2, int(_time_left(deadline_ts))))
+                        timeout_sec=min(int(decode_to), max(TTS_FFMPEG_MIN_TIMEOUT, int(_time_left(deadline_ts))))
                     )
                 return idx, wav
             except Exception as e:
@@ -660,7 +665,7 @@ def synthesize_elevenlabs_parallel(
     try:
         ogg = concat_wavs_to_ogg_opus(
             wav_blobs, ffmpeg,
-            timeout_sec=min(int(concat_to), max(3, int(_time_left(deadline_ts))))
+            timeout_sec=min(int(concat_to), max(TTS_FFMPEG_MIN_TIMEOUT, int(_time_left(deadline_ts))))
         )
     except subprocess.TimeoutExpired:
         logger.error(f"FFmpeg concat timed out")
@@ -710,8 +715,8 @@ class TTSGenerator:
         self.eleven_api_key = os.getenv("ELEVENLABS_API_KEY", "")
         self.eleven_voice_id = os.getenv("ELEVENLABS_VOICE_ID", "")
         self.eleven_model_id = os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5")
-        # Realistic for webhook budget (e.g. Cloud Run); VN_TTS_TIMEOUT is clamped by this.
-        self.tts_global_deadline_sec = float(os.getenv("TTS_GLOBAL_DEADLINE_SEC", "10"))
+        # Total budget for TTS + FFmpeg; use 25–30s so single-shot + fallbacks can succeed.
+        self.tts_global_deadline_sec = float(os.getenv("TTS_GLOBAL_DEADLINE_SEC", "30"))
         self.enable_parallel = os.getenv("VN_PARALLEL_ENABLED", "true").lower() == "true"
         
         # Session for HTTP requests
@@ -760,41 +765,14 @@ class TTSGenerator:
                 time_left_sec=round(time_left, 2),
                 deadline_sec=self.tts_global_deadline_sec,
             )
-        elif time_left < 3:
+        elif time_left < 5:
             logger.info(
                 "tts.low_deadline_budget",
                 time_left_sec=round(time_left, 2),
                 deadline_sec=self.tts_global_deadline_sec,
             )
-        
-        # Try parallel chunked first (if enabled and text is long enough)
-        if self.enable_parallel and len(text) > 300:
-            try:
-                result = await asyncio.to_thread(
-                    synthesize_elevenlabs_parallel,
-                    text,
-                    voice_id=voice_id or self.eleven_voice_id,
-                    model_id=model_id or self.eleven_model_id,
-                    emotion=emotion,
-                    accent=accent,
-                    breaths=breaths,
-                    deadline_ts=deadline_ts,
-                    **kwargs
-                )
-                
-                if result.get("success") and result.get("audio_data"):
-                    audio_bytes = base64.b64decode(result["audio_data"])
-                    meta = {
-                        "mime": result.get("mime", "audio/ogg"),
-                        "path": "parallel",
-                        "is_voice": True,
-                        "is_mp3": False,
-                    }
-                    return audio_bytes, meta, None
-            except Exception as e:
-                logger.warning(f"Parallel TTS failed, falling back: {e}")
-        
-        # Fallback to single-shot
+
+        # Single-shot TTS (parallel chunked path removed to avoid cascading timeouts and redundant fallbacks)
         try:
             result = await asyncio.to_thread(
                 synthesize_elevenlabs_single,
