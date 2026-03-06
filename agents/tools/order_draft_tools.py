@@ -63,6 +63,7 @@ def _post_with_retries(
     read_timeout: float = 90.0,
     max_attempts: int = 3,
     base_backoff: float = 0.8,
+    raise_for_status: bool = True,
 ) -> requests.Response:
     """
     POST with small, bounded retry policy on timeouts and 5xx.
@@ -81,12 +82,18 @@ def _post_with_retries(
             if 500 <= resp.status_code < 600:
                 last_err = RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
             else:
-                resp.raise_for_status()
+                if raise_for_status:
+                    resp.raise_for_status()
                 return resp
         except (requests.Timeout, requests.ConnectionError) as e:
             last_err = e
         except requests.RequestException:
             # For 4xx or other non-retryables, bubble up immediately
+            if raise_for_status:
+                raise
+            # If caller opted out of raise_for_status, still return the response when available.
+            if hasattr(locals().get("resp", None), "status_code"):
+                return resp  # type: ignore[return-value]
             raise
 
         # Backoff before next attempt
@@ -102,6 +109,38 @@ def _post_with_retries(
 
     # Exhausted attempts
     raise last_err if last_err else RuntimeError("Unknown error calling invoice lambda")
+
+
+def _pick_default_thumbnail_retailer_id() -> Optional[str]:
+    """
+    Best-effort guess for Meta catalog's product_retailer_id to display as thumbnail
+    in WhatsApp Cloud API `catalog_message`.
+    """
+    env_val = (
+        os.getenv("WHATSAPP_CATALOG_THUMBNAIL_PRODUCT_RETAILER_ID")
+        or os.getenv("WHATSAPP_THUMBNAIL_PRODUCT_RETAILER_ID")
+        or os.getenv("THUMBNAIL_PRODUCT_RETAILER_ID")
+    )
+    if env_val:
+        return str(env_val).strip()
+    try:
+        # Repo-relative path inside container/runtime
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Agentflo-YTL/
+        products_path = os.path.join(base_dir, "data", "products.json")
+        with open(products_path, "r", encoding="utf-8") as f:
+            js = json.load(f) or {}
+        products = js.get("products") if isinstance(js, dict) else None
+        if isinstance(products, list) and products:
+            p0 = products[0] or {}
+            if isinstance(p0, dict):
+                for k in ("sku_code", "sku", "product_retailer_id", "id"):
+                    v = p0.get(k)
+                    if v:
+                        return str(v).strip()
+    except Exception:
+        pass
+    # Last-resort fallback (matches common SKU in `data/products.json`)
+    return "GR20"
  
  
 def legacy_json_schema(model: type[BaseModel]):
@@ -2144,9 +2183,12 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         "Content-Type": "application/json",
     }
 
+    thumb_id = _pick_default_thumbnail_retailer_id()
+
     # WhatsApp Cloud API: interactive catalog_message (free catalog entry point)
     payload = {
         "messaging_product": "whatsapp",
+        "recipient_type": "individual",
         "to": str(user_id),
         "type": "interactive",
         "interactive": {
@@ -2154,7 +2196,12 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
             "body": {"text": "Here is our catalog."},
             "action": {
                 "name": "catalog_message",
-                "parameters": {"catalog_id": str(catalog_id)},
+                "parameters": {
+                    "catalog_id": str(catalog_id),
+                    # Meta requires a thumbnail product for catalog_message in many setups.
+                    # If this doesn't exist in the connected catalog, Graph will return 400 with details.
+                    "thumbnail_product_retailer_id": str(thumb_id) if thumb_id else "GR20",
+                },
             },
         },
     }
@@ -2167,16 +2214,39 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         read_timeout=15.0,
         max_attempts=2,
         base_backoff=0.6,
+        raise_for_status=False,
     )
 
     if not (200 <= resp.status_code < 300):
+        err_msg = None
+        err_code = None
+        err_subcode = None
+        try:
+            j = resp.json() if (resp.text or "").strip().startswith("{") else {}
+            if isinstance(j, dict):
+                e = j.get("error") or {}
+                if isinstance(e, dict):
+                    err_msg = e.get("message") or e.get("error_user_msg")
+                    err_code = e.get("code")
+                    err_subcode = e.get("error_subcode")
+        except Exception:
+            pass
         logger.error(
             "catalog.send.failed",
             user_id=user_id,
+            catalog_id=str(catalog_id),
+            thumbnail_product_retailer_id=str(thumb_id) if thumb_id else None,
             status=resp.status_code,
+            err_code=err_code,
+            err_subcode=err_subcode,
+            err_msg=err_msg,
             body=(resp.text or "")[:400],
         )
-        raise ValueError(f"Catalog send failed: HTTP {resp.status_code}")
+        raise ValueError(
+            f"Catalog send failed: HTTP {resp.status_code}"
+            + (f" (code={err_code} subcode={err_subcode})" if err_code or err_subcode else "")
+            + (f": {err_msg}" if err_msg else "")
+        )
 
     logger.info("catalog.send.ok", user_id=user_id, catalog_id=str(catalog_id))
     _sessions.mark_catalog_sent(user_id, session_id)
