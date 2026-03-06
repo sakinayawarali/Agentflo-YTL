@@ -2119,10 +2119,13 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
 
     phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID") or WA_PHONE_NUMBER_ID
     token = os.getenv("WHATSAPP_ACCESS_TOKEN") or WA_ACCESS_TOKEN
+    # Prefer env overrides, but fall back to the known YTL catalog id so
+    # autosend works even when ENGRO_CATALOG_ID is not set.
     catalog_id = (
         os.getenv("WHATSAPP_CATALOG_ID")
         or os.getenv("ENGRO_CATALOG_ID")
         or os.getenv("CATALOG_ID")
+        or "1381891263693403"
     )
 
     if not (phone_id and token and catalog_id):

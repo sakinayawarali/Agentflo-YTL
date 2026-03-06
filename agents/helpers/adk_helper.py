@@ -2759,6 +2759,34 @@ class ADKHelper:
         except Exception as e:
             logger.error(f"Create user doc error: {e}")
 
+    def maybe_store_whatsapp_profile_name(self, wa_user_id: str, wa_profile_name: str) -> None:
+        """
+        Best-effort: if the Firestore user doc does NOT exist yet, create it and
+        seed customer_name from the WhatsApp Cloud API contact profile name.
+
+        - Only runs when explicitly called (Cloud API webhook path).
+        - Safe to call repeatedly; it will no-op once the doc exists.
+        """
+        try:
+            name = (wa_profile_name or "").strip()
+            if not name:
+                return
+
+            ref = self._user_root(wa_user_id)
+            snap = ref.get()
+            if snap.exists:
+                # Do not override existing docs; name flows are handled elsewhere.
+                return
+
+            payload = {
+                "session_id": None,
+                "customer_name": name,
+            }
+            ref.set(payload)
+            logger.info("whatsapp_name.stored_new_user", user_id=wa_user_id, customer_name=name)
+        except Exception as e:
+            logger.warning("whatsapp_name.store_failed", user_id=wa_user_id, error=str(e))
+
     
     async def save_and_create_new_session(self, user_id: str, current_session_id: str) -> Optional[str]:
         """
