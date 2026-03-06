@@ -1914,14 +1914,9 @@ class ADKHelper:
                 user_id=user_id,
                 session_id=session_id,
             )
+            t = None
             try:
                 await asyncio.to_thread(send_product_catalogue, user_id, session_id)
-                
-                # Wait for greeting VN (or timeout) so Cloud Run doesn't kill the thread
-                t = _spawn_greeting_vn_thread()
-                if t:
-                    await asyncio.to_thread(t.join, 25)
-                
                 # Just bookkeeping; DOES NOT block future explicit requests
                 try:
                     self.session_helper.mark_catalog_sent(user_id, session_id)
@@ -1947,6 +1942,14 @@ class ADKHelper:
                     session_id=session_id,
                     error=str(e),
                 )
+            finally:
+                # Greeting VN fires regardless of whether catalog succeeded or failed.
+                try:
+                    t = _spawn_greeting_vn_thread()
+                    if t:
+                        await asyncio.to_thread(t.join, 25)
+                except Exception as e:
+                    logger.warning("catalog.explicit.vn_failed", user_id=user_id, error=str(e))
             return
 
         # Single-use suppression flag (set after invoice verification)
@@ -2005,14 +2008,9 @@ class ADKHelper:
             session_id=session_id,
             conversation_id=conversation_id,
         )
+        t = None
         try:
             await asyncio.to_thread(send_product_catalogue, user_id, session_id)
-            
-            # Wait for greeting VN (or timeout) so Cloud Run doesn't kill the thread
-            t = _spawn_greeting_vn_thread()
-            if t:
-                await asyncio.to_thread(t.join, 25)
-            
             try:
                 self.session_helper.mark_catalog_sent(user_id, session_id)
                 
@@ -2044,6 +2042,14 @@ class ADKHelper:
                 conversation_id=conversation_id,
                 error=str(e),
             )
+        finally:
+            # Greeting VN fires regardless of whether catalog succeeded or failed.
+            try:
+                t = _spawn_greeting_vn_thread()
+                if t:
+                    await asyncio.to_thread(t.join, 25)
+            except Exception as e:
+                logger.warning("catalog.autosend.vn_failed", user_id=user_id, error=str(e))
        
     async def _upload_and_send_audio(
         self,

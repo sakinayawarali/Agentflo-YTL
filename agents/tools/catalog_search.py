@@ -7,9 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GRAPH_VER = "v23.0"
-ACCESS_TOKEN=os.getenv("WHATSAPP_ACCESS_TOKEN")
+ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
 PRODUCT_SET_ID = os.getenv("WHATSAPP_PRODUCT_SET_ID")
-CATALOG_ID = os.getenv("ENGRO_CATALOG_ID")
+# Default catalog id for YTL WhatsApp catalog (override via ENGRO_CATALOG_ID if needed)
+CATALOG_ID = os.getenv("ENGRO_CATALOG_ID", "1381891263693403")
 
 
 class GraphAPIError(Exception):
