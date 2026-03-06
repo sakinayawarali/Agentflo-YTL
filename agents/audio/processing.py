@@ -39,10 +39,9 @@ class VoiceNoteProcessor:
         self.tts_max_chars = int(os.getenv("TTS_MAX_CHARS", "150000"))
         self.enable_llm_reformat = os.getenv("VN_LLM_REFORMAT_ENABLED", "true").lower() == "true"
 
-        # YTL-specific config: disable Gemini reformatting by default to avoid extra latency
-        # and memory usage on the Cloud Run demo. This is opt-out via YTL_VN_LLM_REFORMAT_ENABLED=true.
+        # YTL: LLM VN reformat enabled by default (opt-out via YTL_VN_LLM_REFORMAT_ENABLED=false).
         tenant = (os.getenv("TENANT_ID") or "").strip().lower()
-        if tenant == "ytl" and os.getenv("YTL_VN_LLM_REFORMAT_ENABLED", "false").lower() != "true":
+        if tenant == "ytl" and os.getenv("YTL_VN_LLM_REFORMAT_ENABLED", "true").lower() != "true":
             if self.enable_llm_reformat:
                 logger.info("vn_processor.ytl_config_applied", tenant=tenant, llm_reformat_enabled=False)
             self.enable_llm_reformat = False
