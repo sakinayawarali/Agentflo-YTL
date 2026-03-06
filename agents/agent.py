@@ -17,7 +17,7 @@ from agents.tools.order_draft_tools import (
     place_order_and_clear_draft,
     get_last_orders,
     _format_draft_for_reply,
-    # send_product_catalogue_tool,
+    sendProductCatalogueTool,
     placeOrderTool,
     getLastOrdersTool,
     confirmOrderDraftTool,   
@@ -187,6 +187,7 @@ engro_assistant_eleven = LlmAgent(
         _guard_tool(sales_intelligence_engine),
         _guard_tool(send_order_pdf),
         _guard_tool(confirmOrderDraftTool, name="confirmOrderDraftTool"),
+        _guard_tool(sendProductCatalogueTool, name="send_product_catalogue"),
 
         # Templates as callable tools
         _guard_tool(greeting_template),  

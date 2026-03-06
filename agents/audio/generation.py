@@ -48,6 +48,13 @@ def _int_env(name: str, default: int) -> int:
         return default
 
 
+def _float_env(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except Exception:
+        return default
+
+
 def _eleven_defaults() -> Dict[str, Any]:
     """Get ElevenLabs configuration from environment."""
     return {
@@ -56,6 +63,8 @@ def _eleven_defaults() -> Dict[str, Any]:
         "ELEVEN_MODEL_ID": _env("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5"),
         "ELEVEN_OUTPUT_FORMAT": _env("ELEVENLABS_OUTPUT_FORMAT", "mp3_22050_32"),
         "ELEVEN_DICTIONARY_ID": _env("ELEVENLABS_PRON_DICT_ID"),
+        # Speech rate: 1.0 = normal, 1.1–1.2 = faster (max 1.2), 0.7–0.9 = slower
+        "ELEVEN_VOICE_SPEED": _float_env("ELEVEN_VOICE_SPEED", 1.12),
         # Parallel & chunking
         "VN_PARALLEL": _int_env("VN_PARALLEL", 2),
         "VN_CHUNK_CHARS": _int_env("VN_CHUNK_CHARS", 300),
@@ -280,6 +289,8 @@ def eleven_tts_http_bytes(
     accept = "audio/wav" if str(output_format or "").startswith("wav") else "audio/mpeg"
     headers = {"xi-api-key": str(api_key), "accept": accept, "Content-Type": "application/json"}
 
+    speed = float(cfg.get("ELEVEN_VOICE_SPEED", 1.0))
+    speed = max(0.7, min(1.2, speed))  # ElevenLabs allows 0.7–1.2
     payload: Dict[str, object] = {
         "text": text,
         "model_id": model_id,
@@ -288,6 +299,7 @@ def eleven_tts_http_bytes(
             "similarity_boost": float(similarity_boost),
             "style": float(style),
             "use_speaker_boost": bool(speaker_boost),
+            "speed": speed,
         },
         "output_format": output_format,
     }
@@ -820,6 +832,8 @@ class TTSGenerator:
         try:
             def _http_mp3():
                 url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.eleven_voice_id}"
+                speed = float(os.getenv("ELEVEN_VOICE_SPEED", "1.12"))
+                speed = max(0.7, min(1.2, speed))
                 payload = {
                     "text": text,
                     "model_id": self.eleven_model_id,
@@ -828,6 +842,7 @@ class TTSGenerator:
                         "similarity_boost": float(os.getenv("ELEVEN_VOICE_SIMILARITY", "0.75")),
                         "style": float(os.getenv("ELEVEN_VOICE_STYLE", "0.0")),
                         "use_speaker_boost": True,
+                        "speed": speed,
                     },
                     "output_format": "mp3_22050_32",
                 }

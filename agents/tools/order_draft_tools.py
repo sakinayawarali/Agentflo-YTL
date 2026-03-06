@@ -2095,19 +2095,16 @@ def _mark_button_clicked(user_id: str, button_id: str):
 
 def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> str:
     """
-    YTL Cement demo: send a simple, text-based product catalogue.
+    Sends the WhatsApp catalog link template message (catalog button).
 
-    - We do NOT use WhatsApp commerce catalogs or any EBM SKUs here.
-    - Instead, we read local data/products.json and list key concrete mixes
-      for the user in plain English.
-    - This function is also responsible for triggering the greeting VN
-      (see ADKHelper._auto_send_catalog_if_needed).
+    Returns:
+        "" on success so the agent doesn't echo internal text.
     """
     # Guardrail: avoid duplicate sends when we've already sent recently (e.g., auto + tool back-to-back)
     try:
-        cooldown = int(os.getenv("CATALOG_COOLDOWN_SEC", "120"))
+        cooldown = int(os.getenv("CATALOG_COOLDOWN_SEC", "15"))
     except Exception:
-        cooldown = 120
+        cooldown = 15
     try:
         last_ts = _sessions.get_last_catalog_sent_at(user_id)
         if last_ts and (time.time() - last_ts) < max(0, cooldown):
@@ -2120,10 +2117,65 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
     except Exception as e:
         logger.warning("catalog.cooldown_check_failed", user_id=user_id, error=str(e))
 
-    # YTL demo: catalog auto-send is disabled. We rely on tools that read
-    # data/products.json (semantic_product_search, search_products_by_sku)
-    # whenever the user asks for product information.
-    logger.info("catalog.send.disabled_ytl", user_id=user_id)
+    phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID") or WA_PHONE_NUMBER_ID
+    token = os.getenv("WHATSAPP_ACCESS_TOKEN") or WA_ACCESS_TOKEN
+    template_name = os.getenv("WHATSAPP_CATALOG_TEMPLATE_NAME", "catalog_message")
+
+    if not (phone_id and token and template_name):
+        logger.warning(
+            "catalog.send.skip_missing_creds",
+            user_id=user_id,
+            have_phone=bool(phone_id),
+            have_token=bool(token),
+            have_template=bool(template_name),
+        )
+        raise ValueError("Missing WhatsApp catalog template credentials (phone/token/template_name).")
+
+    url = f"{WHATSAPP_API_URL}/{phone_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    # WhatsApp Cloud API: template with catalog button
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": str(user_id),
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": os.getenv("WHATSAPP_CATALOG_TEMPLATE_LANG", "en")},
+            "components": [
+                {
+                    "type": "button",
+                    "sub_type": "catalog",
+                    "index": "1",
+                }
+            ],
+        },
+    }
+
+    resp = _post_with_retries(
+        url,
+        json_payload=payload,
+        headers=headers,
+        connect_timeout=5.0,
+        read_timeout=15.0,
+        max_attempts=2,
+        base_backoff=0.6,
+    )
+
+    if not (200 <= resp.status_code < 300):
+        logger.error(
+            "catalog.send.failed",
+            user_id=user_id,
+            status=resp.status_code,
+            body=(resp.text or "")[:400],
+        )
+        raise ValueError(f"Catalog send failed: HTTP {resp.status_code}")
+
+    logger.info("catalog.send.ok", user_id=user_id, template=template_name)
     _sessions.mark_catalog_sent(user_id, session_id)
     return ""
 class SendCatalogueInput(BaseModel):
@@ -2131,29 +2183,23 @@ class SendCatalogueInput(BaseModel):
     pass
 
 
-# @llm_safe("catalog.send")
-# def send_product_catalogue_tool(user_id: str) -> str:
-#     """
-#     Tool wrapper so the LLM can send the product catalogue explicitly.
-#     Returns empty string on success so the agent doesn't echo internal text.
-#     """
-#     try:
-#         msg = send_product_catalogue(user_id)
-#         # If send_product_catalogue didn't raise, we treat as success.
-#         # Don't echo 'Product catalogue link sent successfully.' to user.
-#         return ""
-#     except Exception as e:
-#         logger.error("catalog.send.error", user_id=user_id, error=str(e))
-#         # Only on *hard* failure do we surface something back to the agent
-#         return (
-#             "catalog bhejne mein internal error aa gaya hai bhai... "
-#             "thori dair baad phir try kar lein."
-#         )
+@llm_safe("catalog.send")
+def send_product_catalogue_tool(user_id: str) -> str:
+    """
+    Tool wrapper so the LLM can send the product catalogue explicitly.
+    Returns empty string on success so the agent doesn't echo internal text.
+    """
+    try:
+        _ = send_product_catalogue(user_id)
+        return ""
+    except Exception as e:
+        logger.error("catalog.send.error", user_id=user_id, error=str(e))
+        return "I couldn't send the catalogue right now. Please try again in a moment."
 
 
-# sendProductCatalogueTool = FunctionTool(
-#     func=send_product_catalogue_tool,
-# )
+sendProductCatalogueTool = FunctionTool(
+    func=send_product_catalogue_tool,
+)
 
 ##### old version that uses paid template message
 # def send_product_catalogue(user_id: str):

@@ -40,7 +40,7 @@ from agents.agent import root_agent
 from agents.helpers.session_helper import SessionStore
 from agents.helpers.firestore_utils import get_tenant_id, get_agent_id, user_root
 from utils.logging import logger
-from agents.tools.api_tools import search_customer_by_phone, unwrap_tool_response
+from agents.tools.api_tools import search_customer_by_phone, search_products_by_sku, unwrap_tool_response
 from agents.guardrails import adk_guardrails
 from agents.tools.templates import (
     order_draft_template,
@@ -76,6 +76,9 @@ TRIVIAL_GREETS = {
     "hi there",
     "hello there",
 }
+
+# --- Product discovery (YTL) ---
+PROJECT_USECASE_STATUS = "awaiting_project_usecase"
 
 GOODBYE_RE = re.compile(
     r"""
@@ -1263,6 +1266,37 @@ class ADKHelper:
             except Exception as e:
                 logger.warning("conversation.ensure_failed", user_id=wa_user_id, error=str(e))
                 conversation_id, conv_is_new = None, False
+
+            # --- 5.5 PRODUCT DISCOVERY (guided by project/use-case) ---
+            # This is intentionally handled BEFORE catalog autosend and BEFORE calling the agent
+            # to avoid dumping long SKU lists and to reduce hallucinated pricing.
+            try:
+                flow_status = self.session_helper.get_onboarding_status(wa_user_id)
+            except Exception:
+                flow_status = ""
+
+            if flow_status == PROJECT_USECASE_STATUS:
+                resp = await self._handle_project_usecase_reply(
+                    wa_user_id,
+                    message,
+                    reply_to_message_id=reply_to_message_id,
+                )
+                if resp:
+                    return resp
+
+            if self._is_product_overview_intent(message):
+                # Ask the project question first (best UX).
+                try:
+                    self.session_helper.set_onboarding_status(
+                        wa_user_id,
+                        PROJECT_USECASE_STATUS,
+                        reason="product_overview",
+                    )
+                except Exception:
+                    pass
+                menu = self._project_usecase_menu_text()
+                self._send_text_once(wa_user_id, menu, reply_to_message_id=reply_to_message_id)
+                return menu
 
             # --- 6. SESSION FETCH/CREATE ---
             session_id = self._get_cached_session_id(wa_user_id)
@@ -3744,9 +3778,183 @@ class ADKHelper:
             "catalog bhej", "catalog send",
             "product catalogue", "product catalog",
             "items ki list", "items ka list",
+            "all products", "all items", "full catalog", "full catalogue",
+            "send all products", "send all items",
+            "product message", "products message",
         ]
 
         return any(p in t for p in phrases)
+
+    def _is_product_overview_intent(self, text: str) -> bool:
+        """
+        Product overview intent: user asks what products/mixes/services we have.
+        We handle this with a guided project/use-case question (instead of listing SKUs).
+        """
+        if not text:
+            return False
+        t = text.strip().lower()
+        # NOTE: Do NOT include explicit catalog intent here; that should trigger catalog sending.
+        needles = [
+            "what products",
+            "what product",
+            "what do you have",
+            "what do u have",
+            "what do you sell",
+            "what can you supply",
+            "products available",
+            "available products",
+            "what concrete do you have",
+            "what concrete",
+            "concrete do you have",
+            "concrete grades",
+            "what mixes",
+        ]
+        return any(n in t for n in needles)
+
+    def _project_usecase_menu_text(self) -> str:
+        return "What are you building?"
+
+    def _parse_project_usecase_choice(self, text: str) -> Optional[int]:
+        if not text:
+            return None
+        t = text.strip().lower()
+        # Numeric choice
+        m = re.match(r"^\s*([1-6])\b", t)
+        if m:
+            try:
+                return int(m.group(1))
+            except Exception:
+                return None
+        # Text choice
+        if any(k in t for k in ("slab", "floor")):
+            return 1
+        if any(k in t for k in ("foundation", "foundations", "footing", "footings")):
+            return 2
+        if any(k in t for k in ("column", "columns", "beam", "beams")):
+            return 3
+        if any(k in t for k in ("driveway", "decor", "decorative", "finish", "finishing")):
+            return 4
+        if any(k in t for k in ("tank", "wet", "water", "bath", "basement")):
+            return 5
+        if "else" in t or "other" in t:
+            return 6
+        return None
+
+    async def _handle_project_usecase_reply(self, user_id: str, user_text: str, *, reply_to_message_id: Optional[str]) -> str:
+        choice = self._parse_project_usecase_choice(user_text or "")
+        if not choice:
+            msg = "What are you building? A slab, foundation, columns/beams, driveway, or something else?"
+            self._send_text_once(user_id, msg, reply_to_message_id=reply_to_message_id)
+            return msg
+
+        # Map use-case → recommended SKUs (kept small for WhatsApp UX)
+        rec_map: Dict[int, List[str]] = {
+            1: ["GR20", "GR25"],
+            2: ["GR25", "GR30"],
+            3: ["GR30", "GR40"],
+            4: ["DECOBUILD", "FAIRBUILD"],
+            5: ["AQUABUILD", "GR30"],
+        }
+
+        if choice == 6:
+            # Clear flow and ask a tighter follow-up.
+            try:
+                self.session_helper.set_onboarding_status(user_id, None)
+            except Exception:
+                pass
+            msg = (
+                "No problem.\n"
+                "Is it closer to a *slab*, *foundations*, *columns/beams*, *decorative finish*, or a *wet area*?\n\n"
+                "Tell me the use-case and how many cubic metres you need."
+            )
+            self._send_text_once(user_id, msg, reply_to_message_id=reply_to_message_id)
+            return msg
+
+        sku_codes = rec_map.get(choice, [])
+        title_map = {
+            1: "house slabs",
+            2: "foundations",
+            3: "columns & beams",
+            4: "driveways / decorative work",
+            5: "water tanks / wet areas",
+        }
+        usecase_title = title_map.get(choice, "your project")
+
+        # Optional per-item notes to match UX copy (e.g., "(stronger)")
+        notes_map: Dict[int, Dict[str, str]] = {
+            1: {"GR25": "(stronger)"},
+        }
+
+        products: List[dict] = []
+        try:
+            raw = search_products_by_sku(sku_codes)
+            ok, payload, _err = unwrap_tool_response(raw, system_name="search_products_by_sku")
+            if ok and isinstance(payload, dict):
+                items = payload.get("products") or []
+                if isinstance(items, list):
+                    products = [p for p in items if isinstance(p, dict)]
+        except Exception as e:
+            logger.warning("project_reco.fetch_failed", user_id=user_id, error=str(e), skus=sku_codes)
+
+        # Preserve requested order
+        by_code = {
+            str(p.get("sku_code") or p.get("sku") or "").strip().upper(): p
+            for p in products
+        }
+        ordered = [by_code.get(code.upper(), {}) for code in sku_codes]
+
+        def _label_for(p: dict) -> str:
+            code = str(p.get("sku_code") or p.get("sku") or "").strip().upper()
+            if code.startswith("GR") and code[2:].isdigit():
+                return f"Grade {int(code[2:])}"
+            # Prefer short display name; strip any long dash descriptors
+            nm = (p.get("product_name") or p.get("official_name") or p.get("name") or code or "Concrete mix").strip()
+            return nm.split(" – ")[0].split(" - ")[0].strip() or nm
+
+        def _fmt_line(p: dict) -> Optional[str]:
+            if not p:
+                return None
+            price = p.get("price_per_m3") or (p.get("pricing") or {}).get("price_per_m3") or (p.get("pricing") or {}).get("sell_price")
+            unit = "m³"
+            price_txt = f"RM{int(price)}/{unit}" if isinstance(price, (int, float)) else ""
+            code = str(p.get("sku_code") or p.get("sku") or "").strip().upper()
+            label = _label_for(p)
+            note = (notes_map.get(choice, {}) or {}).get(code, "")
+            if note:
+                label = f"{label} {note}".strip()
+            if price_txt:
+                return f"• {label} – {price_txt}"
+            return f"• {label}"
+
+        lines = [ln for ln in (_fmt_line(p) for p in ordered) if ln]
+
+        # Min order (best-effort from first product)
+        min_order = None
+        try:
+            for p in ordered:
+                mo = p.get("min_order_m3")
+                if isinstance(mo, (int, float)) and mo > 0:
+                    min_order = int(mo)
+                    break
+        except Exception:
+            min_order = None
+
+        body = "\n".join(lines) if lines else "• Grade 20 / 25 / 30 / 40 (standard mixes)\n• EcoBuild / AquaBuild / FlowBuild (engineered mixes)"
+        min_line = f"\n\nMinimum order: {min_order}m³." if min_order else ""
+        msg = (
+            f"For {usecase_title} we recommend:\n\n"
+            f"{body}"
+            f"{min_line}\n\n"
+            "How many m³ do you need?"
+        )
+
+        try:
+            self.session_helper.set_onboarding_status(user_id, None)
+        except Exception:
+            pass
+
+        self._send_text_once(user_id, msg, reply_to_message_id=reply_to_message_id)
+        return msg
 
 
     def _is_trivial_greeting(self, msg: str) -> bool:
