@@ -1801,8 +1801,10 @@ class ADKHelper:
             logger.info("voice.lock.busy.skip", user_id=user_id)
             return
 
-        t = threading.Thread(target=_runner, daemon=True)
+        # daemon=False + join so Cloud Run doesn't kill the thread on scale-down
+        t = threading.Thread(target=_runner, daemon=False)
         t.start()
+        t.join(timeout=25)
     
     # ---------- TTS ----------
     def _round_rupee_str(self, raw: str) -> tuple[Optional[int], str]:
@@ -1854,7 +1856,8 @@ class ADKHelper:
 
         text = (message_text or "").strip()
         
-        # Helper to safely spawn the VN process in a detached thread
+        # Helper: spawn greeting VN in a non-daemon thread so Cloud Run doesn't kill it on scale-down.
+        # Returns the thread so caller can join(timeout) before request returns.
         def _spawn_greeting_vn_thread():
             import threading
             def _runner():
@@ -1864,7 +1867,9 @@ class ADKHelper:
                     logger.warning("greeting_vn_bg_thread.cancelled", user_id=user_id, error=str(e))
                 except Exception as e:
                     logger.error("greeting_vn_bg_thread.error", user_id=user_id, error=str(e))
-            threading.Thread(target=_runner, daemon=True).start()
+            t = threading.Thread(target=_runner, daemon=False)
+            t.start()
+            return t
 
         # ------------------------------------------------------------------
         # 1) Explicit "send me catalog" intent → always send
@@ -1878,8 +1883,10 @@ class ADKHelper:
             try:
                 await asyncio.to_thread(send_product_catalogue, user_id, session_id)
                 
-                # FIXED: Fire and forget using a dedicated thread
-                _spawn_greeting_vn_thread()
+                # Wait for greeting VN (or timeout) so Cloud Run doesn't kill the thread
+                t = _spawn_greeting_vn_thread()
+                if t:
+                    await asyncio.to_thread(t.join, 25)
                 
                 # Just bookkeeping; DOES NOT block future explicit requests
                 try:
@@ -1951,6 +1958,10 @@ class ADKHelper:
                 seconds_since=round(now - last_ts, 1),
                 cooldown=cooldown,
             )
+            # Greeting VN still fires on new conversation even when catalog is on cooldown
+            t = _spawn_greeting_vn_thread()
+            if t:
+                await asyncio.to_thread(t.join, 25)
             return
 
         # Actually auto-send catalog
@@ -1963,8 +1974,10 @@ class ADKHelper:
         try:
             await asyncio.to_thread(send_product_catalogue, user_id, session_id)
             
-            # FIXED: Fire and forget using a dedicated thread
-            _spawn_greeting_vn_thread()
+            # Wait for greeting VN (or timeout) so Cloud Run doesn't kill the thread
+            t = _spawn_greeting_vn_thread()
+            if t:
+                await asyncio.to_thread(t.join, 25)
             
             try:
                 self.session_helper.mark_catalog_sent(user_id, session_id)
