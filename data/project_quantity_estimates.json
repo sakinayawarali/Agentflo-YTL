@@ -1,0 +1,25 @@
+{
+  "description": "Basic assumptions for approx concrete (m³) when customer describes project scale. Agent assumes area/storeys and says 'you will need approx X m³'.",
+  "high_rise_residential": {
+    "label": "High-rise apartment, condo, tower",
+    "m3_per_floor": 300,
+    "assumption_note": "Typical floor plate and structure.",
+    "recommended_skus": ["GR30", "SUPERBUILD", "FLOWBUILD", "FLOWBUILD_PRO", "PUMP"]
+  },
+  "low_rise_residential": {
+    "label": "Low-rise 2–3 storey house, bungalow, terrace",
+    "total_m3_approx": 135,
+    "recommended_skus": ["GR25", "GR30", "GR20"]
+  },
+  "single_storey_slab": {
+    "label": "Single-storey slab, small commercial",
+    "total_m3_approx": 35,
+    "m3_per_sqm_slab": 0.18,
+    "recommended_skus": ["GR20", "GR25", "CONCRETE_STD"]
+  },
+  "warehouse_industrial": {
+    "label": "Warehouse, large single-storey industrial",
+    "m3_per_sqm": 0.2,
+    "recommended_skus": ["GR25", "GR30", "FLEXBUILD"]
+  }
+}

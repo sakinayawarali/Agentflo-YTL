@@ -3625,11 +3625,12 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                 lines.append("")
                 lines.append(f"Approximate demo total: {total_amount}")
 
-            # Store order snapshot in Firestore under the user's document
+            # Store order snapshot in Firestore under the user's document (users/{user_id}/orders/{order_id})
             try:
                 order_doc = _user_ref(user_id).collection("orders").document(order_id)
                 order_payload = {
                     "order_id": order_id,
+                    "user_id": user_id,
                     "store_code": store_code,
                     "created_at": datetime.datetime.utcnow().isoformat() + "Z",
                     "items": [
@@ -3641,7 +3642,9 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                         for item in draft.items
                     ],
                     "total_amount": getattr(draft, "total_amount", None) or getattr(draft, "grand_total", None),
-                    "status": "captured",
+                    "status": "confirmed",
+                    "delivery_status": "scheduled_today",
+                    "tracking_message": "Your order is scheduled for delivery today.",
                 }
                 order_doc.set(order_payload, merge=True)
                 _po_print("ytl_demo.order_stored", order_path=order_doc.path)
@@ -3656,9 +3659,10 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                 logger.warning("ytl_demo.order_draft_clear_failed", user_id=user_id, error=str(e))
 
             confirmation_text = (
-                "Your order has been captured successfully. ✅\n\n"
+                "Your order has been confirmed successfully. ✅\n\n"
+                f"**Order ID: {order_id}** — please save this for tracking.\n\n"
                 "You’ll now receive your order details here in chat. "
-                "Please review them carefully and share this summary with your YTL representative if you’d like to proceed."
+                "You can ask *Where's my order?* anytime and share this Order ID to get an update."
             )
 
             logger.info("place_order.completed_ytl", user_id=user_id, order_id=order_id)
@@ -3882,6 +3886,52 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
             traceback=traceback.format_exc(),
         )
         return strings["internal_error"].format(error=e)
+
+
+def get_order_status(order_id: str, user_id: str) -> str:
+    """
+    LLM tool: look up an order by Order ID for the current user and return a
+    short tracking/delivery status. Use when the user asks "where's my order",
+    "track my order", or "order status" and has provided (or you have) their Order ID.
+
+    Arguments:
+    - order_id (required str): The order ID, e.g. YTL-1734567890 (from the confirmation message).
+    - user_id (required str): Chat/user identifier (the current user).
+
+    Returns:
+    - str: A short status message, e.g. "Your order is scheduled for delivery today.";
+      or "I couldn't find an order with that ID. Please check and try again."
+    """
+    logger.info("tool.call", tool="getOrderStatusTool", user_id=user_id, order_id=order_id)
+    order_id = (order_id or "").strip()
+    if not order_id:
+        return "Please share your Order ID (e.g. YTL-1234567890) so I can check the status. You'll find it in the message we sent when your order was confirmed."
+    try:
+        order_ref = _user_ref(user_id).collection("orders").document(order_id)
+        doc = order_ref.get()
+        if not doc.exists:
+            return (
+                f"I couldn't find an order with ID *{order_id}*. "
+                "Please check the number and try again, or use the Order ID from your confirmation message."
+            )
+        data = doc.to_dict() or {}
+        tracking_message = (data.get("tracking_message") or "").strip()
+        delivery_status = (data.get("delivery_status") or "").strip()
+        if tracking_message:
+            return tracking_message
+        status_map = {
+            "scheduled_today": "Your order is scheduled for delivery today.",
+            "in_transit": "Your order is on the way.",
+            "delivered": "Your order has been delivered.",
+            "confirmed": "Your order is confirmed and scheduled for delivery soon.",
+        }
+        return status_map.get(delivery_status) or status_map.get(
+            (data.get("status") or "").strip().lower()
+        ) or "Your order is confirmed. We'll update you on delivery timing shortly."
+    except Exception as e:
+        logger.warning("get_order_status.error", user_id=user_id, order_id=order_id, error=str(e))
+        return "I had trouble looking up that order. Please try again or share your Order ID from the confirmation message."
+
 
 # --- NEW FUNCTION ---
 def get_last_orders(store_code: str, user_id: str) -> str:
@@ -4132,6 +4182,10 @@ getLastOrdersTool = FunctionTool(
     func=get_last_orders,
 )
 
+getOrderStatusTool = FunctionTool(
+    func=get_order_status,
+)
+
 # --- Input schema for the get_last_orders tool ---
 class GetLastOrdersInput(BaseModel):
     """Input schema for the get_last_orders tool."""
@@ -4278,8 +4332,9 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "Theek hai bhai, aapke cart mein yeh items hain:\n\n"
             "{summary}\n\n"
+            "Confirm karte hi aapko *Hari Raya promotion* se *10% off* milega.\n\n"
             "Kya yeh final order hai? Agar aap confirm karein (haan / yes / confirm), "
-            "toh main yehi order place kar dungi"
+            "toh main yehi order place kar dungi."
         ),
     },
     "EN": {
@@ -4299,6 +4354,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "Alright, here are the items in your cart:\n\n"
             "{summary}\n\n"
+            "Confirm now and get *10% off* with our *Hari Raya promotion*.\n\n"
             "Is this the final order? If you confirm (yes / confirm), "
             "I'll place this order."
         ),
@@ -4311,6 +4367,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "好的，您购物车里有以下商品：\n\n"
             "{summary}\n\n"
+            "确认即享*开斋节促销* *九折优惠*。\n\n"
             "这是最终订单吗？如果您确认（是 / yes / confirm），我就为您下单。"
         ),
     },
@@ -4331,6 +4388,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "Baik, berikut adalah item dalam troli anda:\n\n"
             "{summary}\n\n"
+            "Sahkan sekarang dan dapat *10% diskaun* dengan promosi *Hari Raya* kami.\n\n"
             "Adakah ini pesanan akhir? Jika anda sahkan (ya / yes / confirm), "
             "saya akan buat pesanan ini."
         ),
@@ -4352,6 +4410,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "حسنًا، هذه هي العناصر في سلة مشترياتك:\n\n"
             "{summary}\n\n"
+            "أكد الآن واحصل على *خصم 10٪* مع عرض *عيد الفطر*.\n\n"
             "هل هذا هو الطلب النهائي؟ إذا أكدت (نعم / yes / confirm)، "
             "سأقوم بإتمام هذا الطلب."
         ),
