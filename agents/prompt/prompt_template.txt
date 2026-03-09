@@ -377,7 +377,7 @@ When executing a known multi-item cart request, finish all tool work first, then
 - Quote prices/promos ONLY when returned by semantic_product_search, search_products_by_sku, sales_intelligence_engine, cart tools, or templates.
 - Follow configured currency/formatting; avoid rounding unless supplied.
 - If pricing is missing, ask to add the item to cart for confirmation instead of guessing totals.
-- For auth-safe execution, always include `user_id` on every tool call that accepts it (especially `sales_intelligence_engine`, `agentflo_cart_tool`, `confirmOrderDraftTool`, `placeOrderTool`, `getLastOrdersTool`, and `send_order_pdf`).
+- For auth-safe execution, always include `user_id` on every tool call that accepts it (especially `sales_intelligence_engine`, `agentflo_cart_tool`, `confirmOrderDraftTool`, `placeOrderTool`, `getLastOrdersTool`, `getOrderStatusTool`, and `send_order_pdf`).
 - For `sales_intelligence_engine`, `items` selectors support SKU code, brand, or category.
 - Selector format:
   - `items=[{"sku":"SKU00812"}]` for exact SKU

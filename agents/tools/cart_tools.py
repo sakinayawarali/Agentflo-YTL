@@ -868,6 +868,117 @@ def agentflo_cart_tool(payload: dict) -> dict:
 
         return merged
 
+    def _build_local_pricing_from_products(cart_state: dict) -> tuple[list[dict], dict]:
+        """
+        DEMO-only fallback: derive basic pricing from local data/products.json
+        when external pricing is unavailable.
+        """
+        try:
+            # Locate data/products.json relative to this file.
+            base_dir = Path(__file__).resolve().parents[2]  # Agentflo-YTL/
+            products_path = base_dir / "data" / "products.json"
+            if not products_path.is_file():
+                return [], {}
+
+            with products_path.open("r", encoding="utf-8") as f:
+                data = json.load(f) or {}
+
+            products = data.get("products") if isinstance(data, dict) else None
+            if not isinstance(products, list):
+                return [], {}
+
+            # Index products by SKU code.
+            index: dict[str, dict] = {}
+            for p in products:
+                if not isinstance(p, dict):
+                    continue
+                code = (p.get("sku_code") or p.get("sku") or "").strip().upper()
+                if code:
+                    index[code] = p
+
+            basket_items: list[dict] = []
+            items = cart_state.get("items") or cart_state.get("skus") or []
+
+            def _to_float(val: Any) -> Optional[float]:
+                try:
+                    if val is None:
+                        return None
+                    return float(val)
+                except (TypeError, ValueError):
+                    return None
+
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                sku_raw = it.get("sku_code") or it.get("sku") or it.get("item_number")
+                sku = (str(sku_raw).strip().upper() if sku_raw else "")
+                if not sku:
+                    continue
+
+                product = index.get(sku)
+                if not isinstance(product, dict):
+                    continue
+
+                qty = as_int(it.get("qty") if it.get("qty") is not None else it.get("quantity"))
+                if qty is None or qty <= 0:
+                    continue
+
+                name_val = (
+                    product.get("official_name")
+                    or product.get("product_name")
+                    or product.get("name")
+                    or sku
+                )
+
+                price_candidate = (
+                    product.get("base_price")
+                    or product.get("price_per_m3")
+                    or product.get("price_per_trip")
+                )
+                pricing = product.get("pricing") or {}
+                if price_candidate is None and isinstance(pricing, dict):
+                    price_candidate = (
+                        pricing.get("sell_price")
+                        or pricing.get("price_per_m3")
+                        or pricing.get("price_per_trip")
+                    )
+
+                unit_price = _to_float(price_candidate)
+                if unit_price is None:
+                    continue
+
+                line_total = round(float(unit_price) * float(qty), 2)
+
+                basket_items.append(
+                    {
+                        "sku": sku,
+                        "sku_code": sku,
+                        "name": name_val,
+                        "base_price": unit_price,
+                        "final_price": unit_price,
+                        "line_total": line_total,
+                        "qty": qty,
+                    }
+                )
+
+            if not basket_items:
+                return [], {}
+
+            grand_total = sum(float(bi.get("line_total") or 0.0) for bi in basket_items)
+            total_qty = sum(as_int(bi.get("qty")) or 0 for bi in basket_items)
+
+            totals = {
+                "subtotal": grand_total,
+                "discount_total": 0.0,
+                "grand_total": grand_total,
+                "total_qty": total_qty,
+            }
+
+            return basket_items, totals
+        except Exception as e:
+            logger.warning("cart.local_pricing.error", error=str(e))
+            return [], {}
+
     def ensure_totals_fields(totals_in: Optional[dict], items: List[dict]) -> dict:
         totals = dict(totals_in) if isinstance(totals_in, dict) else {}
 
@@ -1945,6 +2056,30 @@ def agentflo_cart_tool(payload: dict) -> dict:
                 "message": "Fallback pricing via fetch_optimised_basket failed.",
                 "detail": repr(e),
             })
+
+    # DEMO-only local pricing fallback (YTL products.json) when all external pricing fails
+    if not basket_items:
+        is_demo = (
+            str(store_id or "").strip().upper() == "DEMO"
+            or str(customer_id or "").strip().upper() == "DEMO"
+        )
+        if is_demo:
+            local_items, local_totals = _build_local_pricing_from_products(cart_state or {})
+            if local_items:
+                basket_items = local_items
+                totals = local_totals
+                basket = {
+                    "items": basket_items,
+                    "totals": totals,
+                    "basket_id": basket_id,
+                    "objective": objective_used,
+                }
+                logger.info(
+                    "cart.local_pricing.applied",
+                    user_id=user_id,
+                    store_id=store_id,
+                    customer_id=customer_id,
+                )
 
     if not basket_items:
         warnings.append({

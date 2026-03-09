@@ -63,6 +63,7 @@ def _post_with_retries(
     read_timeout: float = 90.0,
     max_attempts: int = 3,
     base_backoff: float = 0.8,
+    raise_for_status: bool = True,
 ) -> requests.Response:
     """
     POST with small, bounded retry policy on timeouts and 5xx.
@@ -81,12 +82,18 @@ def _post_with_retries(
             if 500 <= resp.status_code < 600:
                 last_err = RuntimeError(f"HTTP {resp.status_code}: {resp.text[:200]}")
             else:
-                resp.raise_for_status()
+                if raise_for_status:
+                    resp.raise_for_status()
                 return resp
         except (requests.Timeout, requests.ConnectionError) as e:
             last_err = e
         except requests.RequestException:
             # For 4xx or other non-retryables, bubble up immediately
+            if raise_for_status:
+                raise
+            # If caller opted out of raise_for_status, still return the response when available.
+            if hasattr(locals().get("resp", None), "status_code"):
+                return resp  # type: ignore[return-value]
             raise
 
         # Backoff before next attempt
@@ -102,6 +109,38 @@ def _post_with_retries(
 
     # Exhausted attempts
     raise last_err if last_err else RuntimeError("Unknown error calling invoice lambda")
+
+
+def _pick_default_thumbnail_retailer_id() -> Optional[str]:
+    """
+    Best-effort guess for Meta catalog's product_retailer_id to display as thumbnail
+    in WhatsApp Cloud API `catalog_message`.
+    """
+    env_val = (
+        os.getenv("WHATSAPP_CATALOG_THUMBNAIL_PRODUCT_RETAILER_ID")
+        or os.getenv("WHATSAPP_THUMBNAIL_PRODUCT_RETAILER_ID")
+        or os.getenv("THUMBNAIL_PRODUCT_RETAILER_ID")
+    )
+    if env_val:
+        return str(env_val).strip()
+    try:
+        # Repo-relative path inside container/runtime
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Agentflo-YTL/
+        products_path = os.path.join(base_dir, "data", "products.json")
+        with open(products_path, "r", encoding="utf-8") as f:
+            js = json.load(f) or {}
+        products = js.get("products") if isinstance(js, dict) else None
+        if isinstance(products, list) and products:
+            p0 = products[0] or {}
+            if isinstance(p0, dict):
+                for k in ("sku_code", "sku", "product_retailer_id", "id"):
+                    v = p0.get(k)
+                    if v:
+                        return str(v).strip()
+    except Exception:
+        pass
+    # Last-resort fallback (matches common SKU in `data/products.json`)
+    return "GR20"
  
  
 def legacy_json_schema(model: type[BaseModel]):
@@ -2144,9 +2183,12 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         "Content-Type": "application/json",
     }
 
+    thumb_id = _pick_default_thumbnail_retailer_id()
+
     # WhatsApp Cloud API: interactive catalog_message (free catalog entry point)
     payload = {
         "messaging_product": "whatsapp",
+        "recipient_type": "individual",
         "to": str(user_id),
         "type": "interactive",
         "interactive": {
@@ -2154,7 +2196,12 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
             "body": {"text": "Here is our catalog."},
             "action": {
                 "name": "catalog_message",
-                "parameters": {"catalog_id": str(catalog_id)},
+                "parameters": {
+                    "catalog_id": str(catalog_id),
+                    # Meta requires a thumbnail product for catalog_message in many setups.
+                    # If this doesn't exist in the connected catalog, Graph will return 400 with details.
+                    "thumbnail_product_retailer_id": str(thumb_id) if thumb_id else "GR20",
+                },
             },
         },
     }
@@ -2167,16 +2214,39 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         read_timeout=15.0,
         max_attempts=2,
         base_backoff=0.6,
+        raise_for_status=False,
     )
 
     if not (200 <= resp.status_code < 300):
+        err_msg = None
+        err_code = None
+        err_subcode = None
+        try:
+            j = resp.json() if (resp.text or "").strip().startswith("{") else {}
+            if isinstance(j, dict):
+                e = j.get("error") or {}
+                if isinstance(e, dict):
+                    err_msg = e.get("message") or e.get("error_user_msg")
+                    err_code = e.get("code")
+                    err_subcode = e.get("error_subcode")
+        except Exception:
+            pass
         logger.error(
             "catalog.send.failed",
             user_id=user_id,
+            catalog_id=str(catalog_id),
+            thumbnail_product_retailer_id=str(thumb_id) if thumb_id else None,
             status=resp.status_code,
+            err_code=err_code,
+            err_subcode=err_subcode,
+            err_msg=err_msg,
             body=(resp.text or "")[:400],
         )
-        raise ValueError(f"Catalog send failed: HTTP {resp.status_code}")
+        raise ValueError(
+            f"Catalog send failed: HTTP {resp.status_code}"
+            + (f" (code={err_code} subcode={err_subcode})" if err_code or err_subcode else "")
+            + (f": {err_msg}" if err_msg else "")
+        )
 
     logger.info("catalog.send.ok", user_id=user_id, catalog_id=str(catalog_id))
     _sessions.mark_catalog_sent(user_id, session_id)
@@ -3555,11 +3625,12 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                 lines.append("")
                 lines.append(f"Approximate demo total: {total_amount}")
 
-            # Store order snapshot in Firestore under the user's document
+            # Store order snapshot in Firestore under the user's document (users/{user_id}/orders/{order_id})
             try:
                 order_doc = _user_ref(user_id).collection("orders").document(order_id)
                 order_payload = {
                     "order_id": order_id,
+                    "user_id": user_id,
                     "store_code": store_code,
                     "created_at": datetime.datetime.utcnow().isoformat() + "Z",
                     "items": [
@@ -3571,7 +3642,9 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                         for item in draft.items
                     ],
                     "total_amount": getattr(draft, "total_amount", None) or getattr(draft, "grand_total", None),
-                    "status": "captured",
+                    "status": "confirmed",
+                    "delivery_status": "scheduled_today",
+                    "tracking_message": "Your order is scheduled for delivery today.",
                 }
                 order_doc.set(order_payload, merge=True)
                 _po_print("ytl_demo.order_stored", order_path=order_doc.path)
@@ -3586,9 +3659,10 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
                 logger.warning("ytl_demo.order_draft_clear_failed", user_id=user_id, error=str(e))
 
             confirmation_text = (
-                "Your order has been captured successfully. ✅\n\n"
+                "Your order has been confirmed successfully. ✅\n\n"
+                f"**Order ID: {order_id}** — please save this for tracking.\n\n"
                 "You’ll now receive your order details here in chat. "
-                "Please review them carefully and share this summary with your YTL representative if you’d like to proceed."
+                "You can ask *Where's my order?* anytime and share this Order ID to get an update."
             )
 
             logger.info("place_order.completed_ytl", user_id=user_id, order_id=order_id)
@@ -3812,6 +3886,52 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
             traceback=traceback.format_exc(),
         )
         return strings["internal_error"].format(error=e)
+
+
+def get_order_status(order_id: str, user_id: str) -> str:
+    """
+    LLM tool: look up an order by Order ID for the current user and return a
+    short tracking/delivery status. Use when the user asks "where's my order",
+    "track my order", or "order status" and has provided (or you have) their Order ID.
+
+    Arguments:
+    - order_id (required str): The order ID, e.g. YTL-1734567890 (from the confirmation message).
+    - user_id (required str): Chat/user identifier (the current user).
+
+    Returns:
+    - str: A short status message, e.g. "Your order is scheduled for delivery today.";
+      or "I couldn't find an order with that ID. Please check and try again."
+    """
+    logger.info("tool.call", tool="getOrderStatusTool", user_id=user_id, order_id=order_id)
+    order_id = (order_id or "").strip()
+    if not order_id:
+        return "Please share your Order ID (e.g. YTL-1234567890) so I can check the status. You'll find it in the message we sent when your order was confirmed."
+    try:
+        order_ref = _user_ref(user_id).collection("orders").document(order_id)
+        doc = order_ref.get()
+        if not doc.exists:
+            return (
+                f"I couldn't find an order with ID *{order_id}*. "
+                "Please check the number and try again, or use the Order ID from your confirmation message."
+            )
+        data = doc.to_dict() or {}
+        tracking_message = (data.get("tracking_message") or "").strip()
+        delivery_status = (data.get("delivery_status") or "").strip()
+        if tracking_message:
+            return tracking_message
+        status_map = {
+            "scheduled_today": "Your order is scheduled for delivery today.",
+            "in_transit": "Your order is on the way.",
+            "delivered": "Your order has been delivered.",
+            "confirmed": "Your order is confirmed and scheduled for delivery soon.",
+        }
+        return status_map.get(delivery_status) or status_map.get(
+            (data.get("status") or "").strip().lower()
+        ) or "Your order is confirmed. We'll update you on delivery timing shortly."
+    except Exception as e:
+        logger.warning("get_order_status.error", user_id=user_id, order_id=order_id, error=str(e))
+        return "I had trouble looking up that order. Please try again or share your Order ID from the confirmation message."
+
 
 # --- NEW FUNCTION ---
 def get_last_orders(store_code: str, user_id: str) -> str:
@@ -4062,6 +4182,10 @@ getLastOrdersTool = FunctionTool(
     func=get_last_orders,
 )
 
+getOrderStatusTool = FunctionTool(
+    func=get_order_status,
+)
+
 # --- Input schema for the get_last_orders tool ---
 class GetLastOrdersInput(BaseModel):
     """Input schema for the get_last_orders tool."""
@@ -4208,8 +4332,9 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "Theek hai bhai, aapke cart mein yeh items hain:\n\n"
             "{summary}\n\n"
+            "Confirm karte hi aapko *Hari Raya promotion* se *10% off* milega.\n\n"
             "Kya yeh final order hai? Agar aap confirm karein (haan / yes / confirm), "
-            "toh main yehi order place kar dungi"
+            "toh main yehi order place kar dungi."
         ),
     },
     "EN": {
@@ -4229,6 +4354,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "Alright, here are the items in your cart:\n\n"
             "{summary}\n\n"
+            "Confirm now and get *10% off* with our *Hari Raya promotion*.\n\n"
             "Is this the final order? If you confirm (yes / confirm), "
             "I'll place this order."
         ),
@@ -4241,6 +4367,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "好的，您购物车里有以下商品：\n\n"
             "{summary}\n\n"
+            "确认即享*开斋节促销* *九折优惠*。\n\n"
             "这是最终订单吗？如果您确认（是 / yes / confirm），我就为您下单。"
         ),
     },
@@ -4261,6 +4388,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "Baik, berikut adalah item dalam troli anda:\n\n"
             "{summary}\n\n"
+            "Sahkan sekarang dan dapat *10% diskaun* dengan promosi *Hari Raya* kami.\n\n"
             "Adakah ini pesanan akhir? Jika anda sahkan (ya / yes / confirm), "
             "saya akan buat pesanan ini."
         ),
@@ -4282,6 +4410,7 @@ _CONFIRM_ORDER_DRAFT_MESSAGES = {
         "summary_template": (
             "حسنًا، هذه هي العناصر في سلة مشترياتك:\n\n"
             "{summary}\n\n"
+            "أكد الآن واحصل على *خصم 10٪* مع عرض *عيد الفطر*.\n\n"
             "هل هذا هو الطلب النهائي؟ إذا أكدت (نعم / yes / confirm)، "
             "سأقوم بإتمام هذا الطلب."
         ),

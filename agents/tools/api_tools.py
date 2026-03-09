@@ -662,3 +662,73 @@ def semantic_product_search(
         result = _tool_error(code, msg, retryable, system_name)
         _log_tool_result(system_name, False, result.get("error"))
         return result
+
+
+def estimate_concrete_for_project(
+    project_type: str,
+    num_stories: Optional[int] = None,
+    floor_area_sqm: Optional[float] = None,
+) -> Dict[str, Any]:
+    """
+    Approx concrete (m³) for a project when the user describes scale without engineer specs.
+    Uses data/project_quantity_estimates.json. Assumes typical area/storeys; returns one "approx" number.
+
+    Args:
+        project_type: One of "high_rise_residential", "low_rise_residential",
+                      "single_storey_slab", "warehouse_industrial".
+        num_stories: For high_rise_residential, number of storeys (optional).
+        floor_area_sqm: For warehouse_industrial or single_storey_slab, floor area in m² (optional).
+
+    Returns:
+        Dict with keys: success, m3_approx, label, recommended_skus, disclaimer.
+    """
+    data = _load_local_json("project_quantity_estimates.json")
+    if not data:
+        return {
+            "success": False,
+            "error": "Project quantity estimates not available",
+            "m3_approx": None,
+            "label": None,
+            "recommended_skus": [],
+            "disclaimer": "Your engineer or QS will confirm the final quantity.",
+        }
+    key = (project_type or "").strip().lower().replace(" ", "_")
+    if key == "high_rise_residential":
+        block = data.get("high_rise_residential") or {}
+        per_floor = block.get("m3_per_floor") or 300
+        n = num_stories if isinstance(num_stories, int) and num_stories > 0 else 1
+        m3_approx = per_floor * n
+    elif key == "low_rise_residential":
+        block = data.get("low_rise_residential") or {}
+        m3_approx = block.get("total_m3_approx") or 135
+    elif key == "single_storey_slab":
+        block = data.get("single_storey_slab") or {}
+        if floor_area_sqm is not None and floor_area_sqm > 0:
+            rate = block.get("m3_per_sqm_slab") or 0.18
+            m3_approx = int(round(floor_area_sqm * rate))
+        else:
+            m3_approx = block.get("total_m3_approx") or 35
+    elif key == "warehouse_industrial":
+        block = data.get("warehouse_industrial") or {}
+        if floor_area_sqm is not None and floor_area_sqm > 0:
+            rate = block.get("m3_per_sqm") or 0.2
+            m3_approx = int(round(floor_area_sqm * rate))
+        else:
+            m3_approx = 400
+    else:
+        return {
+            "success": False,
+            "error": f"Unknown project_type: {project_type}",
+            "m3_approx": None,
+            "label": None,
+            "recommended_skus": [],
+            "disclaimer": "Your engineer or QS will confirm the final quantity.",
+        }
+    block = data.get(key) or {}
+    return {
+        "success": True,
+        "m3_approx": m3_approx,
+        "label": block.get("label") or key,
+        "recommended_skus": block.get("recommended_skus") or [],
+        "disclaimer": "Your engineer or QS will confirm the final quantity.",
+    }

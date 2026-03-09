@@ -16,11 +16,13 @@ from agents.tools.templates import (
 from agents.tools.order_draft_tools import (
     place_order_and_clear_draft,
     get_last_orders,
+    get_order_status,
     _format_draft_for_reply,
     sendProductCatalogueTool,
     placeOrderTool,
     getLastOrdersTool,
-    confirmOrderDraftTool,   
+    getOrderStatusTool,
+    confirmOrderDraftTool,
 )
 from agents.tools.promo_cart_tool import add_promo_items_to_cart
 from agents.tools.api_tools import (
@@ -181,6 +183,7 @@ engro_assistant_eleven = LlmAgent(
         _guard_tool(agentflo_cart_tool),
         _guard_tool(placeOrderTool, name="placeOrderTool"),
         _guard_tool(getLastOrdersTool, name="getLastOrdersTool"),
+        _guard_tool(getOrderStatusTool, name="getOrderStatusTool"),
         _guard_tool(retrieve_knowledge_base),
         # CSV catalog search is intentionally decoupled for now.
         # _guard_tool(product_info_csv_tool),
