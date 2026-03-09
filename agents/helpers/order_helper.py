@@ -34,6 +34,45 @@ class OrderHelper:
         self.product_set_id = os.getenv("WHATSAPP_PRODUCT_SET_ID")
         self.headers = {'Authorization': f'Bearer {self.access_token}'}
         self.WHATSAPP_PRODUCTS_URL = f"https://graph.facebook.com/v23.0/{self.product_set_id}/products"
+        self._retailer_id_to_internal_sku: Optional[Dict[str, str]] = None
+
+    def _load_retailer_id_to_internal_sku(self) -> Dict[str, str]:
+        """
+        Build a mapping from Meta catalog retailer_id/content_id -> internal sku_code.
+
+        For YTL, Meta catalog uses numeric content IDs (e.g. "3"), while the internal
+        catalogue uses sku_codes like "GR30". This mapping allows WA catalog orders
+        to land in the cart with internal sku_codes so downstream pricing/confirm flows
+        can render proper names and totals without depending on external lookups.
+        """
+        if self._retailer_id_to_internal_sku is not None:
+            return self._retailer_id_to_internal_sku
+        mapping: Dict[str, str] = {}
+        try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Agentflo-YTL/
+            products_path = os.path.join(base_dir, "data", "products.json")
+            with open(products_path, "r", encoding="utf-8") as f:
+                js = json.load(f) or {}
+            products = js.get("products") if isinstance(js, dict) else None
+            if isinstance(products, list):
+                for p in products:
+                    if not isinstance(p, dict):
+                        continue
+                    rid = str(p.get("product_retailer_id") or "").strip()
+                    sku = str(p.get("sku_code") or p.get("sku") or "").strip()
+                    if rid and sku:
+                        mapping[rid] = sku
+        except Exception as e:
+            logger.warning("order_helper.retailer_id_map_load_failed error=%s", str(e))
+        self._retailer_id_to_internal_sku = mapping
+        return mapping
+
+    def _map_retailer_id_to_internal_sku(self, retailer_id: Optional[str]) -> Optional[str]:
+        rid = str(retailer_id or "").strip()
+        if not rid:
+            return None
+        m = self._load_retailer_id_to_internal_sku()
+        return m.get(rid)
 
 
     def get_product_details(self, product_ids: List[str], limit: int = 1000) -> Dict[str, ProductDetailResponse]:
@@ -79,7 +118,7 @@ class OrderHelper:
 
         # Attempt 2: Fallback full catalog scan (Meta filter bug workaround)
         print(f"Fallback: Scanning catalog for missing items...")
-        fallback_params = {
+        fallback_params: Optional[Dict[str, Any]] = {
             "fields": "id,name,retailer_id,price",
             "limit": limit
         }
@@ -104,7 +143,7 @@ class OrderHelper:
                     
                 # Handle Meta's cursor-based pagination
                 url = data.get("paging", {}).get("next")
-                fallback_params = None # Don't pass params on next page, URL already has them built-in
+                fallback_params = None  # Don't pass params on next page; URL already has them built-in
         except Exception as e:
             print(f"Fallback scan failed: {e}")
 
@@ -216,6 +255,12 @@ class OrderHelper:
             # Defaults from WhatsApp
             sku_code = cart_item.product_retailer_id or product_name
             mapped_name = product_name
+
+            # If Meta retailer_id/content_id differs from internal sku_code, map it so the
+            # cart uses internal SKUs (while still storing product_retailer_id separately).
+            internal_sku = self._map_retailer_id_to_internal_sku(cart_item.product_retailer_id)
+            if internal_sku:
+                sku_code = internal_sku
 
             # Parse WhatsApp catalog price if we have product_details
             whatsapp_price: Optional[float] = None

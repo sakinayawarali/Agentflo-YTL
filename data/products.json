@@ -3,6 +3,7 @@
     {
       "sku_code": "GR20",
       "sku": "GR20",
+      "product_retailer_id": "1",
       "product_name": "Grade 20 Concrete",
       "name": "Grade 20 – General slabs",
       "official_name": "Grade 20 Concrete",
@@ -16,6 +17,7 @@
     {
       "sku_code": "GR25",
       "sku": "GR25",
+      "product_retailer_id": "2",
       "product_name": "Grade 25 Concrete",
       "name": "Grade 25 – Foundations",
       "official_name": "Grade 25 Concrete",
@@ -29,6 +31,7 @@
     {
       "sku_code": "GR30",
       "sku": "GR30",
+      "product_retailer_id": "3",
       "product_name": "Grade 30 Concrete",
       "name": "Grade 30 – Structural beams/columns",
       "official_name": "Grade 30 Concrete",
@@ -42,6 +45,7 @@
     {
       "sku_code": "GR40",
       "sku": "GR40",
+      "product_retailer_id": "4",
       "product_name": "Grade 40 Concrete",
       "name": "Grade 40 – High strength",
       "official_name": "Grade 40 Concrete",
@@ -55,6 +59,7 @@
     {
       "sku_code": "PUMP",
       "sku": "PUMP",
+      "product_retailer_id": "5",
       "product_name": "Pump truck (per trip)",
       "name": "Pump truck – per trip",
       "official_name": "Pump Truck",
@@ -67,6 +72,7 @@
     {
       "sku_code": "CONCRETE_STD",
       "sku": "CONCRETE_STD",
+      "product_retailer_id": "6",
       "product_name": "Standard Concrete",
       "name": "Concrete – Standard ready-mix",
       "official_name": "Standard Ready-Mix Concrete",
@@ -80,6 +86,7 @@
     {
       "sku_code": "ECOBUILD",
       "sku": "ECOBUILD",
+      "product_retailer_id": "7",
       "product_name": "EcoBuild Concrete",
       "name": "EcoBuild – Environment friendly mix",
       "official_name": "YTL EcoBuild Concrete",
@@ -93,6 +100,7 @@
     {
       "sku_code": "AQUABUILD",
       "sku": "AQUABUILD",
+      "product_retailer_id": "8",
       "product_name": "AquaBuild Concrete",
       "name": "AquaBuild – Water-resistant mix",
       "official_name": "YTL AquaBuild Concrete",
@@ -106,6 +114,7 @@
     {
       "sku_code": "DECOBUILD",
       "sku": "DECOBUILD",
+      "product_retailer_id": "9",
       "product_name": "DecoBuild Concrete",
       "name": "DecoBuild – Decorative concrete",
       "official_name": "YTL DecoBuild Concrete",
@@ -119,6 +128,7 @@
     {
       "sku_code": "FLOWBUILD_PRO",
       "sku": "FLOWBUILD_PRO",
+      "product_retailer_id": "10",
       "product_name": "FlowBuild Pro Concrete",
       "name": "FlowBuild Pro – High flow mix",
       "official_name": "YTL FlowBuild Pro Concrete",
@@ -132,6 +142,7 @@
     {
       "sku_code": "SUPERBUILD",
       "sku": "SUPERBUILD",
+      "product_retailer_id": "11",
       "product_name": "SuperBuild Concrete",
       "name": "SuperBuild – High performance mix",
       "official_name": "YTL SuperBuild Concrete",
@@ -145,6 +156,7 @@
     {
       "sku_code": "COOLBUILD",
       "sku": "COOLBUILD",
+      "product_retailer_id": "12",
       "product_name": "CoolBuild Concrete",
       "name": "CoolBuild – Temperature controlled mix",
       "official_name": "YTL CoolBuild Concrete",
@@ -158,6 +170,7 @@
     {
       "sku_code": "FLOWBUILD",
       "sku": "FLOWBUILD",
+      "product_retailer_id": "13",
       "product_name": "FlowBuild Concrete",
       "name": "FlowBuild – Easy placing mix",
       "official_name": "YTL FlowBuild Concrete",
@@ -171,6 +184,7 @@
     {
       "sku_code": "FAIRBUILD",
       "sku": "FAIRBUILD",
+      "product_retailer_id": "14",
       "product_name": "FairBuild Concrete",
       "name": "FairBuild – Fair-faced concrete",
       "official_name": "YTL FairBuild Concrete",
@@ -184,6 +198,7 @@
     {
       "sku_code": "RAPIDBUILD",
       "sku": "RAPIDBUILD",
+      "product_retailer_id": "15",
       "product_name": "RapidBuild Concrete",
       "name": "RapidBuild – Fast setting mix",
       "official_name": "YTL RapidBuild Concrete",
@@ -197,6 +212,7 @@
     {
       "sku_code": "FLEXBUILD",
       "sku": "FLEXBUILD",
+      "product_retailer_id": "16",
       "product_name": "FlexBuild Concrete",
       "name": "FlexBuild – Flexible application mix",
       "official_name": "YTL FlexBuild Concrete",
@@ -210,6 +226,7 @@
     {
       "sku_code": "FIBREBUILD",
       "sku": "FIBREBUILD",
+      "product_retailer_id": "17",
       "product_name": "FibreBuild Concrete",
       "name": "FibreBuild – Fibre reinforced mix",
       "official_name": "YTL FibreBuild Concrete",
@@ -223,6 +240,7 @@
     {
       "sku_code": "DESIGNATED",
       "sku": "DESIGNATED",
+      "product_retailer_id": "18",
       "product_name": "Designated Concrete",
       "name": "Designated Concrete – Custom mix",
       "official_name": "YTL Designated Concrete",
