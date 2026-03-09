@@ -1300,7 +1300,9 @@ class ADKHelper:
 
             # --- 6. SESSION FETCH/CREATE ---
             session_id = self._get_cached_session_id(wa_user_id)
+            session_created_this_turn = False
             if not session_id:
+                session_created_this_turn = True
                 external_user_id = self.get_external_user_id(wa_user_id)
                 self.create_user_document(wa_user_id)
                 customer_meta = await asyncio.to_thread(self._ensure_customer_metadata, wa_user_id)
@@ -1326,7 +1328,16 @@ class ADKHelper:
             # --- 7. GOODBYE / CATALOG ---
             is_goodbye = self.is_goodbye_message(message)
 
-            if not is_goodbye and not disable_catalog:
+            if is_goodbye or disable_catalog:
+                logger.info(
+                    "catalog.not_sent",
+                    user_id=wa_user_id,
+                    reason="goodbye_or_disabled",
+                    detail="Catalog skipped: user said goodbye or catalog was disabled for this request.",
+                    is_goodbye=is_goodbye,
+                    disable_catalog=disable_catalog,
+                )
+            else:
                 try:
                     await self._maybe_send_catalog(
                         wa_user_id,
@@ -1334,9 +1345,16 @@ class ADKHelper:
                         message_text=message,
                         conversation_id=conversation_id or "",
                         conv_is_new=conv_is_new,
+                        session_created_this_turn=session_created_this_turn,
                     )
                 except Exception as e:
-                    logger.warning("catalog.maybe_send_failed", user_id=wa_user_id, error=str(e))
+                    logger.warning(
+                        "catalog.not_sent",
+                        user_id=wa_user_id,
+                        reason="maybe_send_exception",
+                        detail=f"_maybe_send_catalog raised: {e!s}",
+                        error=str(e),
+                    )
 
             if is_goodbye:
                 response = "Goodbye! If you need anything else, just message me."
@@ -1871,6 +1889,7 @@ class ADKHelper:
         message_text: str,
         conversation_id: str,
         conv_is_new: bool,
+        session_created_this_turn: bool = False,
     ) -> None:
         """
         Decide whether to send catalog, purely hardcoded (no LLM / tools):
@@ -1879,13 +1898,26 @@ class ADKHelper:
         → ALWAYS send (ignores conv_is_new + cooldown).
 
         2) Otherwise, only auto-send when:
-        - This is a NEW conversation (conv_is_new == True), AND
+        - (This is a NEW conversation (conv_is_new == True) OR a new session was created this turn), AND
         - Catalog was not sent too recently (cooldown).
 
         Applies to BOTH text and voice (since voice is already transcribed).
         """
+        logger.info(
+            "catalog.maybe_send.entry",
+            user_id=user_id,
+            conv_is_new=conv_is_new,
+            session_created_this_turn=session_created_this_turn,
+            has_session_id=bool(session_id),
+            conversation_id=conversation_id or "",
+        )
         if not session_id:
-            logger.info("catalog.skip_no_session", user_id=user_id)
+            logger.info(
+                "catalog.not_sent",
+                user_id=user_id,
+                reason="no_session_id",
+                detail="Session ID is missing; catalog send skipped.",
+            )
             return
 
         text = (message_text or "").strip()
@@ -1917,6 +1949,12 @@ class ADKHelper:
             t = None
             try:
                 await asyncio.to_thread(send_product_catalogue, user_id, session_id)
+                logger.info(
+                    "catalog.sent",
+                    user_id=user_id,
+                    reason="explicit_intent",
+                    session_id=session_id,
+                )
                 # Just bookkeeping; DOES NOT block future explicit requests
                 try:
                     self.session_helper.mark_catalog_sent(user_id, session_id)
@@ -1937,8 +1975,10 @@ class ADKHelper:
                     )
             except Exception as e:
                 logger.warning(
-                    "catalog.explicit_send_failed",
+                    "catalog.not_sent",
                     user_id=user_id,
+                    reason="explicit_send_failed",
+                    detail=f"User asked for catalog but send failed: {e!s}",
                     session_id=session_id,
                     error=str(e),
                 )
@@ -1959,21 +1999,27 @@ class ADKHelper:
             suppressed = False
         if suppressed:
             logger.info(
-                "catalog.autosend.skip_suppressed_flag",
+                "catalog.not_sent",
                 user_id=user_id,
+                reason="autosend_suppressed",
+                detail="Catalog autosend was suppressed (e.g. after invoice verification).",
                 conversation_id=conversation_id,
             )
             return
 
         # ------------------------------------------------------------------
-        # 2) AUTO-SEND ONLY on first message of a conversation
-        #    (text or audio-first both go through here)
+        # 2) AUTO-SEND on first message of a conversation OR when a new session started this turn
+        #    (e.g. user returned after order/session end, or first message ever)
         # ------------------------------------------------------------------
 
-        if not conv_is_new:
+        if not conv_is_new and not session_created_this_turn:
             logger.info(
-                "catalog.autosend.skip_not_new_conversation",
+                "catalog.not_sent",
                 user_id=user_id,
+                reason="not_new_conversation_or_session",
+                detail="Neither new conversation nor new session this turn; autosend only on first message or new session.",
+                conv_is_new=conv_is_new,
+                session_created_this_turn=session_created_this_turn,
                 conversation_id=conversation_id,
             )
             return
@@ -1988,12 +2034,15 @@ class ADKHelper:
         now = time.time()
 
         if last_ts and (now - last_ts) < max(0, cooldown):
+            seconds_since = round(now - last_ts, 1)
             logger.info(
-                "catalog.autosend.cooldown",
+                "catalog.not_sent",
                 user_id=user_id,
+                reason="cooldown",
+                detail=f"Catalog was sent {seconds_since}s ago; cooldown is {cooldown}s.",
                 conversation_id=conversation_id,
-                seconds_since=round(now - last_ts, 1),
-                cooldown=cooldown,
+                seconds_since_last=seconds_since,
+                cooldown_sec=cooldown,
             )
             # Greeting VN still fires on new conversation even when catalog is on cooldown
             t = _spawn_greeting_vn_thread()
@@ -2029,15 +2078,18 @@ class ADKHelper:
                 )
 
             logger.info(
-                "catalog.autosend.done",
+                "catalog.sent",
                 user_id=user_id,
+                reason="autosend",
                 session_id=session_id,
                 conversation_id=conversation_id,
             )
         except Exception as e:
             logger.warning(
-                "catalog.autosend.failed",
+                "catalog.not_sent",
                 user_id=user_id,
+                reason="send_failed",
+                detail=f"Catalog send raised: {e!s}",
                 session_id=session_id,
                 conversation_id=conversation_id,
                 error=str(e),

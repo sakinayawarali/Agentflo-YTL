@@ -3658,6 +3658,16 @@ def place_order_and_clear_draft(store_code: str, user_id: str) -> str:
             except Exception as e:
                 logger.warning("ytl_demo.order_draft_clear_failed", user_id=user_id, error=str(e))
 
+            # Clear pending order-confirmation context so the next message (e.g. "hi") does not re-ask to confirm
+            try:
+                _user_ref(user_id).set(
+                    {"pending_order_confirmation": firestore.DELETE_FIELD},
+                    merge=True,
+                )
+                logger.info("ytl_demo.order_confirm.context.cleared", user_id=user_id)
+            except Exception as e:
+                logger.warning("ytl_demo.order_confirm.context.clear_failed", user_id=user_id, error=str(e))
+
             confirmation_text = (
                 "Your order has been confirmed successfully. ✅\n\n"
                 f"**Order ID: {order_id}** — please save this for tracking.\n\n"
