@@ -139,8 +139,10 @@ def _pick_default_thumbnail_retailer_id() -> Optional[str]:
                         return str(v).strip()
     except Exception:
         pass
-    # Last-resort fallback (matches common SKU in `data/products.json`)
-    return "GR20"
+    # No safe fallback: a wrong retailer_id causes WhatsApp Cloud API 400
+    # with "Products not found in FB Catalog". Prefer leaving it unset and
+    # letting WhatsApp choose a default thumbnail (or retry without it).
+    return None
  
  
 def legacy_json_schema(model: type[BaseModel]):
@@ -2188,6 +2190,10 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
     # WhatsApp Cloud API: interactive catalog_message (free catalog entry point).
     # Note: action.parameters must only contain thumbnail_product_retailer_id; catalog_id
     # is not accepted here (catalog is tied to the business account / phone number).
+    interactive_action: Dict[str, Any] = {"name": "catalog_message"}
+    if thumb_id:
+        interactive_action["parameters"] = {"thumbnail_product_retailer_id": str(thumb_id)}
+
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -2196,30 +2202,29 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         "interactive": {
             "type": "catalog_message",
             "body": {"text": "Here is our catalog."},
-            "action": {
-                "name": "catalog_message",
-                "parameters": {
-                    "thumbnail_product_retailer_id": str(thumb_id) if thumb_id else "GR20",
-                },
-            },
+            "action": interactive_action,
         },
     }
 
-    resp = _post_with_retries(
-        url,
-        json_payload=payload,
-        headers=headers,
-        connect_timeout=5.0,
-        read_timeout=15.0,
-        max_attempts=2,
-        base_backoff=0.6,
-        raise_for_status=False,
-    )
+    def _send(p: Dict[str, Any]):
+        return _post_with_retries(
+            url,
+            json_payload=p,
+            headers=headers,
+            connect_timeout=5.0,
+            read_timeout=15.0,
+            max_attempts=2,
+            base_backoff=0.6,
+            raise_for_status=False,
+        )
+
+    resp = _send(payload)
 
     if not (200 <= resp.status_code < 300):
         err_msg = None
         err_code = None
         err_subcode = None
+        err_details = None
         try:
             j = resp.json() if (resp.text or "").strip().startswith("{") else {}
             if isinstance(j, dict):
@@ -2228,8 +2233,56 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
                     err_msg = e.get("message") or e.get("error_user_msg")
                     err_code = e.get("code")
                     err_subcode = e.get("error_subcode")
+                    ed = e.get("error_data") or {}
+                    if isinstance(ed, dict):
+                        err_details = ed.get("details")
         except Exception:
             pass
+
+        # If the thumbnail_product_retailer_id is wrong / not present in the connected FB catalog,
+        # WhatsApp returns 131009 with details like "Products not found in FB Catalog".
+        # In that case retry once WITHOUT a thumbnail so WhatsApp can pick a default.
+        if (
+            resp.status_code == 400
+            and thumb_id
+            and (err_code == 131009 or str(err_code) == "131009")
+            and isinstance(err_details, str)
+            and "products not found" in err_details.lower()
+        ):
+            logger.warning(
+                "catalog.send.retry_without_thumbnail",
+                user_id=user_id,
+                thumbnail_product_retailer_id=str(thumb_id),
+                err_details=err_details,
+            )
+            payload_no_thumb = {
+                **payload,
+                "interactive": {
+                    **payload.get("interactive", {}),
+                    "action": {"name": "catalog_message"},
+                },
+            }
+            resp2 = _send(payload_no_thumb)
+            if 200 <= resp2.status_code < 300:
+                logger.info("catalog.sent", user_id=user_id, mode="catalog_message", retry="without_thumbnail")
+                return ""
+            # Fall through to error logging with resp2 details
+            resp = resp2
+            err_msg = err_code = err_subcode = err_details = None
+            try:
+                j = resp.json() if (resp.text or "").strip().startswith("{") else {}
+                if isinstance(j, dict):
+                    e = j.get("error") or {}
+                    if isinstance(e, dict):
+                        err_msg = e.get("message") or e.get("error_user_msg")
+                        err_code = e.get("code")
+                        err_subcode = e.get("error_subcode")
+                        ed = e.get("error_data") or {}
+                        if isinstance(ed, dict):
+                            err_details = ed.get("details")
+            except Exception:
+                pass
+
         logger.error(
             "catalog.send.failed",
             user_id=user_id,
@@ -2239,6 +2292,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
             err_code=err_code,
             err_subcode=err_subcode,
             err_msg=err_msg,
+            err_details=err_details,
             body=(resp.text or "")[:400],
         )
         raise ValueError(
