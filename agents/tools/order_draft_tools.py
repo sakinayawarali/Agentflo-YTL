@@ -2185,7 +2185,9 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
 
     thumb_id = _pick_default_thumbnail_retailer_id()
 
-    # WhatsApp Cloud API: interactive catalog_message (free catalog entry point)
+    # WhatsApp Cloud API: interactive catalog_message (free catalog entry point).
+    # Note: action.parameters must only contain thumbnail_product_retailer_id; catalog_id
+    # is not accepted here (catalog is tied to the business account / phone number).
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -2197,9 +2199,6 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
             "action": {
                 "name": "catalog_message",
                 "parameters": {
-                    "catalog_id": str(catalog_id),
-                    # Meta requires a thumbnail product for catalog_message in many setups.
-                    # If this doesn't exist in the connected catalog, Graph will return 400 with details.
                     "thumbnail_product_retailer_id": str(thumb_id) if thumb_id else "GR20",
                 },
             },

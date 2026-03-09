@@ -3091,7 +3091,8 @@ class ADKHelper:
             pending_order_confirm_ctx = self._build_pending_order_confirmation_context(user_id)
         except Exception:
             pending_order_confirm_ctx = ""
-        if pending_order_confirm_ctx:
+        # Do not inject pending order context for trivial greetings (hi/hello); agent should greet normally.
+        if pending_order_confirm_ctx and not self._is_trivial_greeting(query):
             merged_query = (
                 f"[PENDING_ORDER_CONFIRMATION]\n{pending_order_confirm_ctx}\n[/PENDING_ORDER_CONFIRMATION]\n"
                 f"{merged_query}"
