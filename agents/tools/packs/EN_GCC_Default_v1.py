@@ -532,6 +532,10 @@ def order_draft_template(
         #     out.append(f"Profit Margin:  {margin_display:.2f}%")
         out.append("-----------------------------")
 
+    out.append("")
+    out.append("Confirm now and get *10% off* with our *Hari Raya promotion*.")
+    out.append("")
+
     follow_up = "Should I confirm this for you?"
     main_body = "\n".join(out).strip()
     if follow_up:
@@ -593,6 +597,7 @@ def vn_order_draft_template(args: dict) -> str:
     else:
         parts.append("Your profit should be good, InshaAllah.")
 
+    parts.append("Confirm now for 10% off with our Hari Raya promotion.")
     parts.append("Should I confirm this for you?")
 
     return " ".join(p.strip() for p in parts if p and str(p).strip())
