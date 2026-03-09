@@ -2301,6 +2301,40 @@ class RouteHandler:
                         # ===================================================================
                         if should_process_immediately:
                             try:
+                                # If user is ending the chat, clear cart so next session starts clean.
+                                # No-op if cart already empty.
+                                if immediate_reason == "farewell":
+                                    try:
+                                        cart_snapshot = get_cart(user_id) or {}
+                                        cart_items = (
+                                            cart_snapshot.get("items")
+                                            or cart_snapshot.get("skus")
+                                            or []
+                                        )
+                                        if isinstance(cart_items, list) and cart_items:
+                                            store_id_for_clear = str(
+                                                cart_snapshot.get("store_id") or user_id
+                                            ).strip() or str(user_id)
+                                            resp = agentflo_cart_tool(
+                                                {
+                                                    "user_id": user_id,
+                                                    "store_id": store_id_for_clear,
+                                                    "operations": [{"op": "CLEAR_CART"}],
+                                                }
+                                            ) or {}
+                                            logger.info(
+                                                "cart.cleared_on_goodbye",
+                                                user_id=user_id,
+                                                store_id=store_id_for_clear,
+                                                ok=bool(isinstance(resp, dict) and resp.get("ok")),
+                                            )
+                                    except Exception as _e:
+                                        logger.warning(
+                                            "cart.clear_on_goodbye_failed",
+                                            user_id=user_id,
+                                            error=str(_e),
+                                        )
+
                                 agent_response = self.adk_helper.handle_message(
                                     text_message,
                                     user_id,
