@@ -143,6 +143,58 @@ def _pick_default_thumbnail_retailer_id() -> Optional[str]:
     # with "Products not found in FB Catalog". Prefer leaving it unset and
     # letting WhatsApp choose a default thumbnail (or retry without it).
     return None
+
+
+_RETAILER_ID_TO_INTERNAL_SKU_CACHE: Optional[dict[str, str]] = None
+
+
+def _retailer_id_to_internal_sku_map() -> dict[str, str]:
+    """
+    Map Meta catalog retailer_id/content_id -> internal sku_code.
+
+    YTL's Meta catalog uses numeric content IDs (e.g. "7"), while internal catalog
+    uses sku_codes like "ECOBUILD". This mapping lets cart rendering/enrichment
+    display proper names and pricing even when the cart contains retailer IDs.
+    """
+    global _RETAILER_ID_TO_INTERNAL_SKU_CACHE
+    if _RETAILER_ID_TO_INTERNAL_SKU_CACHE is not None:
+        return _RETAILER_ID_TO_INTERNAL_SKU_CACHE
+    mapping: dict[str, str] = {}
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))  # Agentflo-YTL/
+        products_path = os.path.join(base_dir, "data", "products.json")
+        with open(products_path, "r", encoding="utf-8") as f:
+            js = json.load(f) or {}
+        products = js.get("products") if isinstance(js, dict) else None
+        if isinstance(products, list):
+            for p in products:
+                if not isinstance(p, dict):
+                    continue
+                rid = str(p.get("product_retailer_id") or "").strip()
+                sku = str(p.get("sku_code") or p.get("sku") or "").strip()
+                if rid and sku:
+                    mapping[rid] = sku
+    except Exception:
+        mapping = {}
+    _RETAILER_ID_TO_INTERNAL_SKU_CACHE = mapping
+    return mapping
+
+
+def _maybe_map_retailer_id_sku(sku: Optional[str]) -> Optional[str]:
+    """
+    If sku looks like a Meta retailer/content id (e.g. "7"), map it to internal sku_code.
+    Otherwise return original.
+    """
+    if sku is None:
+        return None
+    token = str(sku).strip()
+    if not token:
+        return None
+    if token.isdigit():
+        mapped = _retailer_id_to_internal_sku_map().get(token)
+        if mapped:
+            return mapped
+    return token
  
  
 def legacy_json_schema(model: type[BaseModel]):
@@ -1289,7 +1341,7 @@ def update_order_draft(user_id: str, order_draft: OrderDraft | dict) -> bool:
                 or item.get("item_number")
                 or ""
             )
-            sku = _normalize_sku_code(sku_raw)
+            sku = _normalize_sku_code(_maybe_map_retailer_id_sku(sku_raw))
             if not sku:
                 if sku_raw:
                     logger.warning("order_draft.update.invalid_sku_skipped", user_id=user_id, raw_sku=str(sku_raw))
@@ -1527,6 +1579,9 @@ def get_cart(
                         or item.get("sku_id")
                         or item.get("item_number")
                     )
+                    # If cart contains Meta retailer/content id (e.g. "7"), map to internal sku_code
+                    # so downstream product lookup and rendering use proper names/prices.
+                    sku_raw = _maybe_map_retailer_id_sku(sku_raw)
                     sku_norm = _normalize_sku_code(sku_raw)
                     if sku_norm:
                         sku_codes.append(sku_norm)
@@ -1719,7 +1774,12 @@ def get_cart(
                                 if not isinstance(item, dict):
                                     continue
 
+                                # Normalize sku in-place if it came in as retailer/content id
                                 sku = item.get("sku_code") or item.get("sku")
+                                mapped_sku = _maybe_map_retailer_id_sku(sku)
+                                if mapped_sku and mapped_sku != sku:
+                                    item["sku_code"] = mapped_sku
+                                    sku = mapped_sku
                                 sku_lookup = str(sku).strip().lower() if sku else None
 
                                 if not sku_lookup or sku_lookup not in product_map:
