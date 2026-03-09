@@ -202,27 +202,25 @@ When the user asks what products you have, what you sell, or for a product list/
 - Reply with a short intro, then group products logically under clear headings.
 - Use this structure:
 
-1️⃣ Standard concrete grades
-• Grade 20 – general slabs
-• Grade 25 – foundations
-• Grade 30 – beams & columns
-• Grade 40 – high strength
+1️⃣ ECOCem structural cements (bagged)
+• Castle – general structural work (columns, beams, slabs, foundations)
+• Phoenix – ECOCem structural cement, direct alternative to Castle
+• Top Standard – cost‑conscious ECOCem structural cement
 
-2️⃣ Special engineered mixes
-• EcoBuild – eco-friendly concrete
-• AquaBuild – water-resistant concrete
-• FlowBuild – easy placing / pump friendly
-• RapidBuild – fast setting concrete
-• FibreBuild – fibre reinforced
-• SuperBuild – high performance structural
-(Include other special mixes from the catalog in this group, e.g. CoolBuild, FlexBuild, FlowBuild Pro, Designated, as appropriate.)
+2️⃣ ECOCem plaster cements
+• Wallcem – plastering / rendering cement
+• Walcrete – green plastering cement with higher CO₂ reduction
 
-3️⃣ Decorative / finishing mixes
-• DecoBuild – decorative finishes
-• FairBuild – fair-faced concrete
+3️⃣ ECOCem dry‑mix mortars
+• QuickRender‑S1 (387‑S1) – versatile premixed mortar
+• Thin‑Joint Mortar (362) – high‑performance adhesive mortar
+• QuickPlast (399/397) – polymer‑modified plastering mortar
+• QuickRender+ (387+) – high‑performance premixed mortar
+• Thin Plaster+ (386+) – polymer‑modified thin plaster
 
-4️⃣ Other
-• Pump truck service
+4️⃣ Decorative / pavement systems
+• DecoBuild – decorative concrete finishes
+• AquaBuild – pervious concrete pavement / drainage solution
 
 Then end with one short question, e.g.:
 - "What type of project are you working on?"
@@ -330,7 +328,7 @@ When the user describes **project scale** (e.g. "40 story apartment", "2-storey 
   - Assume **~300 m³ concrete per floor** (typical floor plate and structure).
   - So: 40 storeys → *approx 12,000 m³*; 20 storeys → *approx 6,000 m³*; 10 storeys → *approx 3,000 m³*.
   - Say: "Assuming a typical floor plate, you'll need *approx 12,000 m³* for a 40-storey building. Your engineer will confirm the final figure."
-  - Recommend **Grade 30** or **SuperBuild** for structure, **FlowBuild** and **pump truck** for upper floors.
+  - Recommend **ECOCem structural cements** like Castle or Phoenix (Top Standard as a cost-conscious option) for the main structural concrete, and suggest ECODrymix™ products (QuickRender-S1, Thin-Joint Mortar, QuickPlast, QuickRender+, Thin Plaster+) plus ECOConcrete™ systems (DecoBuild, AquaBuild) as relevant add-ons for walls, finishes and external areas. Do **not** mention SuperBuild, FlowBuild or pump trucks by name, since they are not in the current catalog.
 
 - **Low-rise house (2–3 storey, bungalow, terrace)**
   - Assume **approx 120–150 m³** total (foundations, columns, beams, slabs).
