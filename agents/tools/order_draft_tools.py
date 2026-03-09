@@ -2196,7 +2196,8 @@ def _mark_button_clicked(user_id: str, button_id: str):
 
 def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> str:
     """
-    Sends the free WhatsApp interactive catalog message (catalog_message).
+    Sends a WhatsApp interactive multi-product catalog message (product_list)
+    with section titles for ECOCem™, ECODrymix™ and ECOConcrete™.
 
     Returns:
         "" on success so the agent doesn't echo internal text.
@@ -2245,24 +2246,56 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         "Content-Type": "application/json",
     }
 
-    thumb_id = _pick_default_thumbnail_retailer_id()
-
-    # WhatsApp Cloud API: interactive catalog_message (free catalog entry point).
-    # Note: action.parameters must only contain thumbnail_product_retailer_id; catalog_id
-    # is not accepted here (catalog is tied to the business account / phone number).
-    interactive_action: Dict[str, Any] = {"name": "catalog_message"}
-    if thumb_id:
-        interactive_action["parameters"] = {"thumbnail_product_retailer_id": str(thumb_id)}
-
+    # WhatsApp Cloud API: interactive multi-product list (grouped sections).
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
         "to": str(user_id),
         "type": "interactive",
         "interactive": {
-            "type": "catalog_message",
-            "body": {"text": "Here is our catalog."},
-            "action": interactive_action,
+            "type": "product_list",
+            "header": {
+                "type": "text",
+                "text": "YTL Cement Catalog",
+            },
+            "body": {
+                "text": "Here's our full range of products.",
+            },
+            "footer": {
+                "text": "Tap a section to see products.",
+            },
+            "action": {
+                "catalog_id": str(catalog_id),
+                "sections": [
+                    {
+                        "title": "ECOCem – Cement",
+                        "product_items": [
+                            {"product_retailer_id": "1"},
+                            {"product_retailer_id": "2"},
+                            {"product_retailer_id": "3"},
+                            {"product_retailer_id": "4"},
+                            {"product_retailer_id": "5"},
+                        ],
+                    },
+                    {
+                        "title": "ECODrymix – Mortars",
+                        "product_items": [
+                            {"product_retailer_id": "6"},
+                            {"product_retailer_id": "7"},
+                            {"product_retailer_id": "8"},
+                            {"product_retailer_id": "9"},
+                            {"product_retailer_id": "10"},
+                        ],
+                    },
+                    {
+                        "title": "ECOConcrete – Systems",
+                        "product_items": [
+                            {"product_retailer_id": "11"},
+                            {"product_retailer_id": "12"},
+                        ],
+                    },
+                ],
+            },
         },
     }
 
@@ -2347,7 +2380,6 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
             "catalog.send.failed",
             user_id=user_id,
             catalog_id=str(catalog_id),
-            thumbnail_product_retailer_id=str(thumb_id) if thumb_id else None,
             status=resp.status_code,
             err_code=err_code,
             err_subcode=err_subcode,
