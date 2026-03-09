@@ -4026,15 +4026,19 @@ def get_order_status(order_id: str, user_id: str) -> str:
       or "I couldn't find an order with that ID. Please check and try again."
     """
     logger.info("tool.call", tool="getOrderStatusTool", user_id=user_id, order_id=order_id)
-    order_id = (order_id or "").strip()
-    if not order_id:
+    raw_order_id = (order_id or "").strip()
+    if not raw_order_id:
         return "Please share your Order ID (e.g. YTL-1234567890) so I can check the status. You'll find it in the message we sent when your order was confirmed."
     try:
-        order_ref = _user_ref(user_id).collection("orders").document(order_id)
+        # Normalize Order ID for lookup so that 'ytl-123', 'YTL-123' or 'Ytl-123'
+        # all resolve to the same document key. Echo the user's original casing
+        # back in messages for readability.
+        order_id_key = raw_order_id.upper()
+        order_ref = _user_ref(user_id).collection("orders").document(order_id_key)
         doc = order_ref.get()
         if not doc.exists:
             return (
-                f"I couldn't find an order with ID *{order_id}*. "
+                f"I couldn't find an order with ID *{raw_order_id}*. "
                 "Please check the number and try again, or use the Order ID from your confirmation message."
             )
         data = doc.to_dict() or {}
