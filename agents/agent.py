@@ -4,6 +4,12 @@ from typing import Optional
 from agents.prompt.vn.prompt_creator import get_vn_prompt
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
+
+# Optional: local file-based knowledge injection (ADK memory)
+try:
+    from google.adk.memory import FileMemory  # type: ignore[import-untyped]
+except Exception:
+    FileMemory = None  # type: ignore[assignment]
 from google.genai import types
 from google.genai import Client
 from google.genai.types import HttpOptions
@@ -29,6 +35,15 @@ from agents.tools.api_tools import (
         search_products_by_sku, 
         search_customer_by_phone,
         semantic_product_search,
+)
+from agents.tools.concrete_calc_tools import calculate_concrete_volume, calculate_trucks_needed
+from agents.tools.pricing_tools import estimate_concrete_price, generate_quote
+from agents.tools.demo_concrete_tools import (
+    recommend_concrete_grade,
+    estimate_pump_needed,
+    nearest_batching_plant,
+    delivery_eta,
+    recommend_pump,
 )
 from agents.tools.knowledge_tool import retrieve_knowledge_base
 from agents.tools.cart_tools import agentflo_cart_tool
@@ -153,6 +168,45 @@ overrides = {
 
 SYSTEM_INSTRUCTION = get_system_prompt(PROMPT_LANGUAGE, overrides=overrides)
 
+# Optional: add YTL sales behavior prompt from knowledge/
+try:
+    _sales_prompt_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "sales_agent_prompt.txt")
+    )
+    if os.path.exists(_sales_prompt_path):
+        with open(_sales_prompt_path, "r", encoding="utf-8") as f:
+            _sales_prompt_text = f.read().strip()
+        if _sales_prompt_text:
+            SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION + "\n\n" + _sales_prompt_text
+except Exception as e:
+    logger.error("Failed to load sales_agent_prompt.txt", error=str(e))
+
+# Optional: add deterministic upselling rules from knowledge/
+try:
+    _upselling_rules_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "upselling_rules.md")
+    )
+    if os.path.exists(_upselling_rules_path):
+        with open(_upselling_rules_path, "r", encoding="utf-8") as f:
+            _upselling_rules_text = f.read().strip()
+        if _upselling_rules_text:
+            SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION + "\n\n" + _upselling_rules_text
+except Exception as e:
+    logger.error("Failed to load upselling_rules.md", error=str(e))
+
+# Optional: add FAQ policy/checklist from knowledge/
+try:
+    _faq_policy_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "knowledge", "faq_answering_policy.md")
+    )
+    if os.path.exists(_faq_policy_path):
+        with open(_faq_policy_path, "r", encoding="utf-8") as f:
+            _faq_policy_text = f.read().strip()
+        if _faq_policy_text:
+            SYSTEM_INSTRUCTION = SYSTEM_INSTRUCTION + "\n\n" + _faq_policy_text
+except Exception as e:
+    logger.error("Failed to load faq_answering_policy.md", error=str(e))
+
 # These settings are used by direct agent calls (/tasks/tts-send) or when
 # USE_AGENT_TTS_CALLBACKS=true. The webhook path has its own VN logic.
 VOICE_NOTE_MODE = os.getenv("VOICE_NOTE_MODE", "summary").lower()
@@ -180,6 +234,15 @@ engro_assistant_eleven = LlmAgent(
         #Agent Tool Calls 
         _guard_tool(semantic_product_search),
         _guard_tool(search_products_by_sku),
+        _guard_tool(calculate_concrete_volume),
+        _guard_tool(calculate_trucks_needed),
+        _guard_tool(estimate_concrete_price),
+        _guard_tool(generate_quote),
+        _guard_tool(recommend_concrete_grade),
+        _guard_tool(estimate_pump_needed),
+        _guard_tool(recommend_pump),
+        _guard_tool(nearest_batching_plant),
+        _guard_tool(delivery_eta),
         _guard_tool(agentflo_cart_tool),
         _guard_tool(placeOrderTool, name="placeOrderTool"),
         _guard_tool(getLastOrdersTool, name="getLastOrdersTool"),
@@ -199,5 +262,28 @@ engro_assistant_eleven = LlmAgent(
 
     ],
 )
+
+# Attach file-based knowledge memory (if available)
+if FileMemory is not None and os.getenv("USE_FILE_MEMORY", "true").lower() in ("1", "true", "yes", "y"):
+    _knowledge_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "knowledge")
+    )
+    _knowledge_paths = [
+        os.path.join(_knowledge_dir, "concrete_products.md"),
+        os.path.join(_knowledge_dir, "concrete_pricing.md"),
+        os.path.join(_knowledge_dir, "delivery_operations.md"),
+        os.path.join(_knowledge_dir, "sustainability_products.md"),
+        os.path.join(_knowledge_dir, "construction_advice.md"),
+        os.path.join(_knowledge_dir, "operations_demo.json"),
+        os.path.join(_knowledge_dir, "concrete_tools.md"),
+        os.path.join(_knowledge_dir, "upselling_rules.md"),
+        os.path.join(_knowledge_dir, "grade_strength_price_table.md"),
+        os.path.join(_knowledge_dir, "customer_faq_intents.md"),
+        os.path.join(_knowledge_dir, "faq_answering_policy.md"),
+    ]
+    try:
+        engro_assistant_eleven.memory = FileMemory(paths=_knowledge_paths)
+    except Exception as e:
+        logger.error("Failed to attach FileMemory knowledge", error=str(e), knowledge_paths=_knowledge_paths)
 
 root_agent = engro_assistant_eleven
