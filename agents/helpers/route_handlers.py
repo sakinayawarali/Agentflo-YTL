@@ -1107,10 +1107,7 @@ class RouteHandler:
             )
             return False
 
-        body_text = (
-            "Thanks for confirming the order. Please reply with the full delivery address for this site, "
-            "and tap the button below to share your site location pin so we can plan the truck route correctly."
-        )
+        body_text = "Please tap the button to share your site location pin."
 
         payload = {
             "messaging_product": "whatsapp",
