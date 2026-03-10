@@ -14,28 +14,6 @@ from google.genai import types
 from google.genai import Client
 from google.genai.types import HttpOptions
 from agents.util import load_instruction_from_file
-from agents.tools.templates import (
-    greeting_template,
-    order_draft_template,
-    vn_order_draft_template,  
-)
-from agents.tools.order_draft_tools import (
-    place_order_and_clear_draft,
-    get_last_orders,
-    get_order_status,
-    _format_draft_for_reply,
-    sendProductCatalogueTool,
-    placeOrderTool,
-    getLastOrdersTool,
-    getOrderStatusTool,
-    confirmOrderDraftTool,
-)
-from agents.tools.promo_cart_tool import add_promo_items_to_cart
-from agents.tools.api_tools import (
-        search_products_by_sku, 
-        search_customer_by_phone,
-        semantic_product_search,
-)
 from agents.tools.concrete_calc_tools import calculate_concrete_volume, calculate_trucks_needed
 from agents.tools.pricing_tools import estimate_concrete_price, generate_quote
 from agents.tools.demo_concrete_tools import (
@@ -45,14 +23,7 @@ from agents.tools.demo_concrete_tools import (
     delivery_eta,
     recommend_pump,
 )
-from agents.tools.knowledge_tool import retrieve_knowledge_base
-from agents.tools.cart_tools import agentflo_cart_tool
 from agents.runtime_config import load_agent_config
-#from agents.tools.test_recommendation import smart_recommendation_template
-#from agents.tools.promotion_template import promotions_tool
-from agents.tools.sales_intelligence_engine import sales_intelligence_engine, send_order_pdf
-# from agents.tools.product_info_csv_tool import product_info_csv_tool
-from agents.prompt.prompt_creator import get_system_prompt
 from utils.logging import logger
 from agents.guardrails.adk_guardrails import (
     before_agent_guard,
@@ -166,7 +137,19 @@ overrides = {
     "REGION_CULTURE_PACK_NAME": pack_name,
 }
 
-SYSTEM_INSTRUCTION = get_system_prompt(PROMPT_LANGUAGE, overrides=overrides)
+SYSTEM_INSTRUCTION = (
+    "You are Ayesha, an AI Sales Engineer for YTL Cement Malaysia (ready-mix concrete).\n"
+    "You ONLY handle YTL Cement Malaysia concrete enquiries (no biscuits/retail).\n\n"
+    "Core tasks:\n"
+    "- recommend the correct concrete grade\n"
+    "- calculate volume (m³), trucks required (8 m³ capacity), and price estimates\n"
+    "- generate a structured quote and help schedule delivery\n"
+    "- answer concrete technical/delivery questions using the provided knowledge base\n\n"
+    "Rules:\n"
+    "- Do not guess policies or specs not present in the knowledge files. If not specified, say so and offer to confirm.\n"
+    "- Always be clear and professional for contractors and engineers.\n"
+    "- For delivery feasibility, request a WhatsApp location pin and use nearest-plant-only + delivery radius logic.\n"
+)
 
 # Optional: add YTL sales behavior prompt from knowledge/
 try:
@@ -222,18 +205,16 @@ USE_AGENT_TTS_CALLBACKS = os.getenv("USE_AGENT_TTS_CALLBACKS", "false").lower() 
 def _guard_tool(tool, name: Optional[str] = None):
     return wrap_tool(tool, tool_name=name, return_raw=True)
 
-engro_assistant_eleven = LlmAgent(
-    name="EngroAssistantEleven",
+ytl_cement_sales_agent = LlmAgent(
+    name="YTLCementSalesAgent",
     model="gemini-2.5-flash",
     instruction=SYSTEM_INSTRUCTION + "\n \n The user_id is: {user_id}",
     # instruction=SYSTEM_INSTRUCTION + "\n \n The user_id is: 923312167555",
     # instruction=SYSTEM_INSTRUCTION + "\n \n The user_id is: 923168242299",
     
-    output_key="Engro_response",
+    output_key="YTL_response",
     tools=[
-        #Agent Tool Calls 
-        _guard_tool(semantic_product_search),
-        _guard_tool(search_products_by_sku),
+        # Concrete tools (deterministic)
         _guard_tool(calculate_concrete_volume),
         _guard_tool(calculate_trucks_needed),
         _guard_tool(estimate_concrete_price),
@@ -243,23 +224,6 @@ engro_assistant_eleven = LlmAgent(
         _guard_tool(recommend_pump),
         _guard_tool(nearest_batching_plant),
         _guard_tool(delivery_eta),
-        _guard_tool(agentflo_cart_tool),
-        _guard_tool(placeOrderTool, name="placeOrderTool"),
-        _guard_tool(getLastOrdersTool, name="getLastOrdersTool"),
-        _guard_tool(getOrderStatusTool, name="getOrderStatusTool"),
-        _guard_tool(retrieve_knowledge_base),
-        # CSV catalog search is intentionally decoupled for now.
-        # _guard_tool(product_info_csv_tool),
-        _guard_tool(sales_intelligence_engine),
-        _guard_tool(send_order_pdf),
-        _guard_tool(confirmOrderDraftTool, name="confirmOrderDraftTool"),
-        _guard_tool(sendProductCatalogueTool, name="send_product_catalogue"),
-
-        # Templates as callable tools
-        _guard_tool(greeting_template),  
-        _guard_tool(order_draft_template),
-        _guard_tool(vn_order_draft_template),
-
     ],
 )
 
@@ -282,8 +246,8 @@ if FileMemory is not None and os.getenv("USE_FILE_MEMORY", "true").lower() in ("
         os.path.join(_knowledge_dir, "faq_answering_policy.md"),
     ]
     try:
-        engro_assistant_eleven.memory = FileMemory(paths=_knowledge_paths)
+        ytl_cement_sales_agent.memory = FileMemory(paths=_knowledge_paths)
     except Exception as e:
         logger.error("Failed to attach FileMemory knowledge", error=str(e), knowledge_paths=_knowledge_paths)
 
-root_agent = engro_assistant_eleven
+root_agent = ytl_cement_sales_agent
