@@ -77,6 +77,8 @@ TRIVIAL_GREETS = {
     "hello there",
 }
 
+_BARE_NUMBER_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*$")
+
 # --- Product discovery (YTL) ---
 PROJECT_USECASE_STATUS = "awaiting_project_usecase"
 
@@ -1283,6 +1285,17 @@ class ADKHelper:
                 )
                 if resp:
                     return resp
+
+            # --- 5.6 CONTEXT GLUE: interpret bare number replies deterministically ---
+            # If we previously asked for volume (m³), treat "20" as 20 m³ (not grade G20).
+            try:
+                expected = self.session_helper.consume_expected_reply(wa_user_id)
+            except Exception:
+                expected = None
+            if expected == "volume_m3":
+                m = _BARE_NUMBER_RE.match(message or "")
+                if m:
+                    message = f"I need {m.group(1)} m³ of ready-mix concrete."
 
             if self._is_product_overview_intent(message):
                 # Ask the project question first (best UX).
@@ -3934,15 +3947,6 @@ class ADKHelper:
             self._send_text_once(user_id, msg, reply_to_message_id=reply_to_message_id)
             return msg
 
-        # Map use-case → recommended SKUs (kept small for WhatsApp UX)
-        rec_map: Dict[int, List[str]] = {
-            1: ["GR20", "GR25"],
-            2: ["GR25", "GR30"],
-            3: ["GR30", "GR40"],
-            4: ["DECOBUILD", "FAIRBUILD"],
-            5: ["AQUABUILD", "GR30"],
-        }
-
         if choice == 6:
             # Clear flow and ask a tighter follow-up.
             try:
@@ -3957,7 +3961,6 @@ class ADKHelper:
             self._send_text_once(user_id, msg, reply_to_message_id=reply_to_message_id)
             return msg
 
-        sku_codes = rec_map.get(choice, [])
         title_map = {
             1: "house slabs",
             2: "foundations",
@@ -3967,73 +3970,34 @@ class ADKHelper:
         }
         usecase_title = title_map.get(choice, "your project")
 
-        # Optional per-item notes to match UX copy (e.g., "(stronger)")
-        notes_map: Dict[int, Dict[str, str]] = {
-            1: {"GR25": "(stronger)"},
-        }
+        # YTL concrete guidance (from knowledge/construction_advice.md)
+        if choice == 1:
+            body = "• G25 (standard for residential slabs)\n• Optional upgrade: G30 (improved durability if budget allows)"
+        elif choice == 2:
+            body = "• G25 or G30 (house foundations)"
+        elif choice == 3:
+            body = "• G30 – G35 (structural columns/beams)"
+        elif choice == 4:
+            body = "• Please share if this is structural or decorative; typical options are G25–G30 for residential work."
+        elif choice == 5:
+            body = "• G30 (and consider waterproofing admixture if required)."
+        else:
+            body = "• G25–G30 (most residential structural applications)"
 
-        products: List[dict] = []
-        try:
-            raw = search_products_by_sku(sku_codes)
-            ok, payload, _err = unwrap_tool_response(raw, system_name="search_products_by_sku")
-            if ok and isinstance(payload, dict):
-                items = payload.get("products") or []
-                if isinstance(items, list):
-                    products = [p for p in items if isinstance(p, dict)]
-        except Exception as e:
-            logger.warning("project_reco.fetch_failed", user_id=user_id, error=str(e), skus=sku_codes)
-
-        # Preserve requested order
-        by_code = {
-            str(p.get("sku_code") or p.get("sku") or "").strip().upper(): p
-            for p in products
-        }
-        ordered = [by_code.get(code.upper(), {}) for code in sku_codes]
-
-        def _label_for(p: dict) -> str:
-            code = str(p.get("sku_code") or p.get("sku") or "").strip().upper()
-            if code.startswith("GR") and code[2:].isdigit():
-                return f"Grade {int(code[2:])}"
-            # Prefer short display name; strip any long dash descriptors
-            nm = (p.get("product_name") or p.get("official_name") or p.get("name") or code or "Concrete mix").strip()
-            return nm.split(" – ")[0].split(" - ")[0].strip() or nm
-
-        def _fmt_line(p: dict) -> Optional[str]:
-            if not p:
-                return None
-            price = p.get("price_per_m3") or (p.get("pricing") or {}).get("price_per_m3") or (p.get("pricing") or {}).get("sell_price")
-            unit = "m³"
-            price_txt = f"RM{int(price)}/{unit}" if isinstance(price, (int, float)) else ""
-            code = str(p.get("sku_code") or p.get("sku") or "").strip().upper()
-            label = _label_for(p)
-            note = (notes_map.get(choice, {}) or {}).get(code, "")
-            if note:
-                label = f"{label} {note}".strip()
-            if price_txt:
-                return f"• {label} – {price_txt}"
-            return f"• {label}"
-
-        lines = [ln for ln in (_fmt_line(p) for p in ordered) if ln]
-
-        # Min order (best-effort from first product)
-        min_order = None
-        try:
-            for p in ordered:
-                mo = p.get("min_order_m3")
-                if isinstance(mo, (int, float)) and mo > 0:
-                    min_order = int(mo)
-                    break
-        except Exception:
-            min_order = None
-
-        body = "\n".join(lines) if lines else "• Grade 20 / 25 / 30 / 40 (standard mixes)\n• EcoBuild / AquaBuild / FlowBuild (engineered mixes)"
-        min_line = f"\n\nMinimum order: {min_order}m³." if min_order else ""
+        # Min order from knowledge (5 m³)
+        min_line = "\n\nMinimum order: 5 m³."
         msg = (
             f"For {usecase_title} we recommend:\n\n"
             f"{body}"
             f"{min_line}\n\n"
             "How many m³ do you need?"
         )
+
+        # Set expectation so a bare number reply is interpreted as volume.
+        try:
+            self.session_helper.set_expected_reply(user_id, "volume_m3")
+        except Exception:
+            pass
 
         try:
             self.session_helper.set_onboarding_status(user_id, None)

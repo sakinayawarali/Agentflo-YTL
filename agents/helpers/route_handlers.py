@@ -46,6 +46,11 @@ from agents.tools.api_tools import update_customer_name, unwrap_tool_response
 from agents.helpers.inbound_store import InboundStore  # <-- NEW
 # from agents.helpers.message_buffer import MessageBufferStore
 
+_ASKS_LOCATION_RE = re.compile(
+    r"(delivery location|site location|location pin|share your location|send your location|share.*pin|provide.*location)",
+    re.IGNORECASE,
+)
+
 # Optional: count WhatsApp status webhooks (sent/delivered/read) as session "activity"
 SESSION_TOUCH_ON_STATUS = os.getenv("SESSION_TOUCH_ON_STATUS", "false").lower() == "true"
 
@@ -2399,6 +2404,25 @@ class RouteHandler:
                                 inbound_key=inbound_key,
                                 reply_to_message_id=replied_to_id,
                             )
+
+                            # YTL (Meta): if agent asks for delivery/site location, also send the interactive location button.
+                            try:
+                                tenant = (TENANT_ID or "").strip().lower()
+                                if (not self.is_twilio) and tenant == "ytl" and isinstance(agent_response, str) and _ASKS_LOCATION_RE.search(agent_response):
+                                    last_sent = 0.0
+                                    try:
+                                        last_sent = float(self.adk_helper.session_helper.get_last_location_request_at(user_id))
+                                    except Exception:
+                                        last_sent = 0.0
+                                    cooldown_sec = float(os.getenv("LOCATION_REQUEST_COOLDOWN_SEC", "0") or 0)
+                                    if (time.time() - last_sent) >= cooldown_sec:
+                                        if self._send_location_request(user_id, replied_to_id):
+                                            try:
+                                                self.adk_helper.session_helper.mark_location_request_sent(user_id)
+                                            except Exception:
+                                                pass
+                            except Exception as e:
+                                logger.warning("wa.location_request.auto_failed", user_id=user_id, error=str(e))
 
                             # Billing: base event
                             try:

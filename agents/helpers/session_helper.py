@@ -582,6 +582,42 @@ class SessionStore:
             payload["onboarding_status_at_date"] = loc["date"]
         self._merge(user_id, payload)
 
+    # ------------ lightweight expected-reply helper ------------
+    # Used to make short-term conversational glue deterministic (e.g., interpreting "20" as 20 m³ after asking volume).
+    def set_expected_reply(self, user_id: str, expected: Optional[str]) -> None:
+        now = self._now()
+        payload = {"expected_reply": expected or None, "expected_reply_at": now}
+        loc = self._fmt_pk_local(now)
+        if loc:
+            payload["expected_reply_at_local"] = loc["local"]
+            payload["expected_reply_at_date"] = loc["date"]
+        self._merge(user_id, payload)
+
+    def consume_expected_reply(self, user_id: str) -> Optional[str]:
+        doc = self._safe_get(user_id) or {}
+        expected = doc.get("expected_reply")
+        if expected:
+            self._merge(user_id, {"expected_reply": None})
+        return str(expected) if expected else None
+
+    # ------------ location-request cooldown (Meta location button) ------------
+    def get_last_location_request_at(self, user_id: str) -> float:
+        try:
+            doc = self._safe_get(user_id)
+            ts = doc.get("last_location_request_at")
+            return float(ts) if ts else 0.0
+        except Exception:
+            return 0.0
+
+    def mark_location_request_sent(self, user_id: str) -> None:
+        now = self._now()
+        payload = {"last_location_request_at": now}
+        loc = self._fmt_pk_local(now)
+        if loc:
+            payload["last_location_request_at_local"] = loc["local"]
+            payload["last_location_request_at_date"] = loc["date"]
+        self._merge(user_id, payload)
+
     def inc_onboarding_attempts(self, user_id: str) -> int:
         """Increment onboarding invoice attempts counter."""
         doc = self._safe_get(user_id)
@@ -633,7 +669,7 @@ class SessionStore:
     def mark_catalog_sent(self, user_id: str, session_id: Optional[str]) -> None:
         """Persist that catalog was sent/attempted for this session (session_id optional)."""
         now = self._now()
-        payload = {
+        payload: dict = {
             "last_catalog_sent_at": now,
         }
         if session_id:
@@ -662,7 +698,7 @@ class SessionStore:
         Helps suppress auto-send on the very next message in the same conversation window.
         """
         now = self._now()
-        payload = {
+        payload: dict = {
             "last_catalog_after_verification_at": now,
         }
         if session_id:

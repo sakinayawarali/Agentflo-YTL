@@ -15,6 +15,7 @@ from google.genai import Client
 from google.genai.types import HttpOptions
 from agents.util import load_instruction_from_file
 from agents.tools.concrete_calc_tools import calculate_concrete_volume, calculate_trucks_needed
+from agents.tools.concrete_specs_tools import get_concrete_technical_properties
 from agents.tools.pricing_tools import estimate_concrete_price, generate_quote
 from agents.tools.demo_concrete_tools import (
     recommend_concrete_grade,
@@ -138,14 +139,21 @@ overrides = {
 }
 
 SYSTEM_INSTRUCTION = (
-    "You are Ayesha, an AI Sales Engineer for YTL Cement Malaysia (ready-mix concrete).\n"
+    "You are Ayesha, a YTL Cement Malaysia representative for ready-mix concrete.\n"
     "You ONLY handle YTL Cement Malaysia concrete enquiries (no biscuits/retail).\n\n"
+    "Important definitions:\n"
+    "- A bare number like \"20\" can mean either a grade (G20) or a volume (20 m³). Use the most recent question to interpret it.\n"
+    "- If you just asked \"How many m³?\" then a bare number is volume in m³. Do NOT ask to clarify.\n\n"
     "Core tasks:\n"
     "- recommend the correct concrete grade\n"
     "- calculate volume (m³), trucks required (8 m³ capacity), and price estimates\n"
     "- generate a structured quote and help schedule delivery\n"
     "- answer concrete technical/delivery questions using the provided knowledge base\n\n"
     "Rules:\n"
+    "- When user asks for available grades: list G15, G20, G25, G30, G35, G40, G45.\n"
+    "- Do NOT invent or list product/mix names unless explicitly present in the knowledge files.\n"
+    "- For technical specs questions (slump, aggregate size, setting time, max delivery time), use get_concrete_technical_properties.\n"
+    "- When user mentions sustainability/green building/certifications, proactively recommend YTL ECO range (ECOConcrete for ready-mix; ECOCem for cement) using the approved phrasing in upselling_rules.md.\n"
     "- Do not guess policies or specs not present in the knowledge files. If not specified, say so and offer to confirm.\n"
     "- Always be clear and professional for contractors and engineers.\n"
     "- For delivery feasibility, request a WhatsApp location pin and use nearest-plant-only + delivery radius logic.\n"
@@ -217,6 +225,7 @@ ytl_cement_sales_agent = LlmAgent(
         # Concrete tools (deterministic)
         _guard_tool(calculate_concrete_volume),
         _guard_tool(calculate_trucks_needed),
+        _guard_tool(get_concrete_technical_properties),
         _guard_tool(estimate_concrete_price),
         _guard_tool(generate_quote),
         _guard_tool(recommend_concrete_grade),
