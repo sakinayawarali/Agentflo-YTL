@@ -1,188 +1,1099 @@
 {
   "products": [
     {
-      "sku_code": "CEM_CASTLE",
-      "sku": "CEM_CASTLE",
-      "product_retailer_id": "1",
-      "category": "cement",
-      "section_title": "Cement",
-      "product_name": "Castle",
-      "name": "Castle – ECOCem product line",
-      "official_name": "Castle Cement",
-      "description": "Castle is a mainstay of the ECOCem product line, made with lower CO₂ emissions for everyday building needs.",
-      "co2_reduction_pct_range": "30-40",
-      "recycled_content_min_pct": 25,
-      "certifications": ["Singapore Green Label"],
-      "best_for": "General structural work, columns, beams, slabs and foundations when mixing on site.",
-      "usage_mix_ratio": "1:2:4 (cement:sand:aggregate) for general concrete",
-      "usage_water_cement_ratio_range": "0.45-0.55",
-      "cement_consumption_kg_per_m3_range": "320-380",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU01",
+      "sku": "SKU01",
+      "product_retailer_id": "SKU01",
+      "category": "Bag cement",
+      "product_name": "castle",
+      "name": "castle – Bag cement",
+      "description": "Castle is a versatile, general purpose blended cement suitable for bricklaying, plastering, screeding, and concreting applications. Castle is a mainstay of our ECOCem™ product line. Made with 30% to 40% lower CO₂ emissions¹, it is a certified Singapore Green Label cement. Its excellent versatility makes it suitable for all general-purpose",
+      "pricing": {
+        "sell_price": 25.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/WEBSITE_PRODUCT_02_latest_31a28a57f5.jpg",
+      "link": "https://ytlcement.my/product/castle"
     },
     {
-      "sku_code": "CEM_WALLCEM",
-      "sku": "CEM_WALLCEM",
-      "product_retailer_id": "2",
-      "category": "cement",
-      "section_title": "Cement",
-      "product_name": "Wallcem",
-      "name": "Wallcem – ECOCem wall plaster cement",
-      "official_name": "Wallcem Cement",
-      "description": "Wallcem is an ECOCem range cement formulated to give better performance in plastering and finishing.",
-      "best_for": "Internal and external wall plastering and rendering.",
-      "do_not_use_for": "Structural concrete, footings or slabs.",
-      "plaster_thickness_mm_range": "12-15",
-      "plaster_consumption_kg_per_m2_per_mm_range": "1.5-2.0",
-      "plaster_consumption_kg_per_m2_at_15mm_range": "22-30",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU02",
+      "sku": "SKU02",
+      "product_retailer_id": "SKU02",
+      "category": "Bag cement",
+      "product_name": "phoenix",
+      "name": "phoenix – Bag cement",
+      "description": "Phoenix is an eco-friendly general purpose blended cement that has superior workability and good cohesiveness. It is easy to mix and suitable for bricklaying, screeding and concreting applications. Phoenix is a mainstay of our ECOCem™ product range. It is made with 30% to 40% lower CO₂ emissions¹, and contains a",
+      "pricing": {
+        "sell_price": 22.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/PHOENIX_f678d982f9.jpg",
+      "link": "https://ytlcement.my/product/phoenix"
     },
     {
-      "sku_code": "CEM_PHOENIX",
-      "sku": "CEM_PHOENIX",
-      "product_retailer_id": "3",
-      "category": "cement",
-      "section_title": "Cement",
-      "product_name": "Phoenix",
-      "name": "Phoenix – ECOCem product range",
-      "official_name": "Phoenix Cement",
-      "description": "Phoenix is part of the ECOCem product range, engineered with lower CO₂ emissions and reliable strength.",
-      "co2_reduction_pct_range": "30-40",
-      "recycled_content_min_pct": 25,
-      "best_for": "General construction where an ECOCem Green Label product is required; direct alternative to Castle.",
-      "usage_mix_ratio": "1:2:4 (cement:sand:aggregate) for general concrete",
-      "cement_consumption_kg_per_m3_range": "320-380",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU03",
+      "sku": "SKU03",
+      "product_retailer_id": "SKU03",
+      "category": "Bag cement",
+      "product_name": "walcrete",
+      "name": "walcrete – Bag cement",
+      "description": "Walcrete is specially designed with air entraining agent to give better performance in plastering application. It is a specially formulated for excellent workability and strong adhesion to walls. It is highly recommended for interior and exterior plastering works. Walcrete is a specially designed plastering cement in our ECOCem™ product range.",
+      "pricing": {
+        "sell_price": 22.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/WALCRETE_71c7068d46.jpg",
+      "link": "https://ytlcement.my/product/walcrete"
     },
     {
-      "sku_code": "CEM_WALCRETE",
-      "sku": "CEM_WALCRETE",
-      "product_retailer_id": "4",
-      "category": "cement",
-      "section_title": "Cement",
-      "product_name": "Walcrete",
-      "name": "Walcrete – plastering cement",
-      "official_name": "Walcrete Cement",
-      "description": "Walcrete is a specially designed plastering cement in the ECOCem product range.",
-      "co2_reduction_pct_range": "40-50",
-      "best_for": "Plastering applications on projects targeting green building certifications.",
-      "do_not_use_for": "Structural work.",
-      "plaster_thickness_mm_range": "12-15",
-      "plaster_consumption_kg_per_m2_per_mm_range": "1.5-2.0",
-      "plaster_consumption_kg_per_m2_at_15mm_range": "22-30",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU04",
+      "sku": "SKU04",
+      "product_retailer_id": "SKU04",
+      "category": "Bag cement",
+      "product_name": "wallcem",
+      "name": "wallcem – Bag cement",
+      "description": "Wallcem is formulated to improve water retention, cohesiveness and workability of the mortar to give better performance in plastering applications. It has good workability, offering stronger adhesion to wall for better finishing which makes it ideal for all internal and external plastering works. Wallcem is another member of our ECOCem™",
+      "pricing": {
+        "sell_price": 22.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/WEBSITE_PRODUCT_05_lates_f15c5115d8.jpg",
+      "link": "https://ytlcement.my/product/wallcem"
     },
     {
-      "sku_code": "CEM_TOP_STANDARD",
-      "sku": "CEM_TOP_STANDARD",
-      "product_retailer_id": "5",
-      "category": "cement",
-      "section_title": "Cement",
-      "product_name": "Top Standard",
-      "name": "Top Standard – ECOCem product range",
-      "official_name": "Top Standard Cement",
-      "description": "Top Standard is part of the ECOCem product range, designed for consistent performance and lower CO₂.",
-      "co2_reduction_pct_range": "30-40",
-      "recycled_content_min_pct": 25,
-      "best_for": "General construction where an eco-certified but cost-conscious cement is acceptable.",
-      "usage_mix_ratio": "1:2:4 (cement:sand:aggregate) for general concrete",
-      "cement_consumption_kg_per_m3_range": "320-380",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU05",
+      "sku": "SKU05",
+      "product_retailer_id": "SKU05",
+      "category": "Bag cement",
+      "product_name": "top standard",
+      "name": "top standard – Bag cement",
+      "description": "Top Standard is one of the most widely-used multipurpose cement in the industry. It is easy to use and has excellent workability, suitable for the building of homes and for commercial use. Top Standard is a mainstay of our ECOCem™ product range. It is made with 30% to 40% lower",
+      "pricing": {
+        "sell_price": 22.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/TOP_STANDARD_1_8666a9136d.jpg",
+      "link": "https://ytlcement.my/product/top-standard"
     },
     {
-      "sku_code": "DM_QUICKRENDER_S1",
-      "sku": "DM_QUICKRENDER_S1",
-      "product_retailer_id": "6",
-      "category": "dry_mix",
-      "section_title": "Dry mix",
-      "product_name": "QuickRender-S1 (387-S1)",
-      "name": "QuickRender-S1 – premixed mortar",
-      "official_name": "QuickRender-S1 Dry Mix",
-      "description": "QuickRender-S1 (387-S1) is a high quality, versatile premixed mortar for high bonding strength and efficient site work.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU06",
+      "sku": "SKU06",
+      "product_retailer_id": "SKU06",
+      "category": "Bag cement",
+      "product_name": "orang kuat",
+      "name": "orang kuat – Bag cement",
+      "description": "Orang Kuat is designed as a high strength Portland cement formulated for early demoulding, handling, and use. It is consistent in quality and ideal for high strength precast applications, where time is of the essence. Orang Kuat is a high strength Portland cement formulated for early demoulding, handling, and use.",
+      "pricing": {
+        "sell_price": 25.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile4_01_ede4242aa0.jpg",
+      "link": "https://ytlcement.my/product/orang-kuat"
     },
     {
-      "sku_code": "DM_THIN_JOINT_MORTAR",
-      "sku": "DM_THIN_JOINT_MORTAR",
-      "product_retailer_id": "7",
-      "category": "dry_mix",
-      "section_title": "Dry mix",
-      "product_name": "Thin-Joint Mortar (362)",
-      "name": "Thin-Joint Mortar – high performance premixed mortar",
-      "official_name": "Thin-Joint Mortar",
-      "description": "Thin-Joint Mortar (362) is a high performance premixed cementitious adhesive mortar with strong adhesive strength.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU07",
+      "sku": "SKU07",
+      "product_retailer_id": "SKU07",
+      "category": "Bag cement",
+      "product_name": "marinecem",
+      "name": "marinecem – Bag cement",
+      "description": "Marinecem is specially manufactured with low C3A content for maximum protection against corrosion caused by sulphate. It is a high-quality cement made for concrete structures that come into contact with soil or groundwater that have a high sulphate content.",
+      "pricing": {
+        "sell_price": 28.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_01_5f89af6f54.jpg",
+      "link": "https://ytlcement.my/product/marinecem"
     },
     {
-      "sku_code": "DM_QUICKPLAST",
-      "sku": "DM_QUICKPLAST",
-      "product_retailer_id": "8",
-      "category": "dry_mix",
-      "section_title": "Dry mix",
-      "product_name": "QuickPlast (399/397)",
-      "name": "QuickPlast – polymer-modified plastering mortar",
-      "official_name": "QuickPlast Dry Mix",
-      "description": "QuickPlast (399/397) is a polymer-modified plastering cement with better workability and water retention.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU08",
+      "sku": "SKU08",
+      "product_retailer_id": "SKU08",
+      "category": "Bulk cement",
+      "product_name": "mascrete lh",
+      "name": "mascrete lh – Bulk cement",
+      "description": "Mascrete LH is a green-certified, type CEM II/B-V specially formulated blended cement. It is produced by intergrinding Fly Ash and clinker at our cement plants under stringent quality control. Mascrete LH is a green certified, blended cement that is part of our ECOCem™ range. It is produced with 20% to",
+      "pricing": {
+        "sell_price": 445.6
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/mascrete_lh_01_dfe820eb8c.png",
+      "link": "https://ytlcement.my/product/mascrete%20lh"
     },
     {
-      "sku_code": "DM_QUICKRENDER_PLUS",
-      "sku": "DM_QUICKRENDER_PLUS",
-      "product_retailer_id": "9",
-      "category": "dry_mix",
-      "section_title": "Dry mix",
-      "product_name": "QuickRender+ (387+)",
-      "name": "QuickRender+ – high performance premixed mortar",
-      "official_name": "QuickRender+ Dry Mix",
-      "description": "QuickRender+ (387+) is a high-performance polymer-modified premixed mortar for durable rendering applications.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU09",
+      "sku": "SKU09",
+      "product_retailer_id": "SKU09",
+      "category": "Bulk cement",
+      "product_name": "mascrete® eco",
+      "name": "mascrete® eco – Bulk cement",
+      "description": "MASCRETE® ECO is an eco-friendly cement, specifically designed for demanding building and infrastructure projects as part of our ECOCem™ product range. MASCRETE® ECO is an eco-friendly cement, specifically designed for demanding building and infrastructure projects as part of our ECOCem™ product range. With up to 30% lower embodied carbon and",
+      "pricing": {
+        "sell_price": 470.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/mascrete_eco_648956d827.png",
+      "link": "https://ytlcement.my/product/mascrete-eco"
     },
     {
-      "sku_code": "DM_THIN_PLASTER_PLUS",
-      "sku": "DM_THIN_PLASTER_PLUS",
-      "product_retailer_id": "10",
-      "category": "dry_mix",
-      "section_title": "Dry mix",
-      "product_name": "Thin Plaster+ (386+)",
-      "name": "Thin Plaster+ – polymer-modified thin plaster",
-      "official_name": "Thin Plaster+ Dry Mix",
-      "description": "Thin Plaster+ (386+) is a polymer-modified premixed mortar with excellent adhesion and semi-smooth finish.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU10",
+      "sku": "SKU10",
+      "product_retailer_id": "SKU10",
+      "category": "Bulk cement",
+      "product_name": "slagcem",
+      "name": "slagcem – Bulk cement",
+      "description": "Slagcem is our high quality Portland Slag Cement / Blast Furnace Cement. It is an eco-friendly product that provides high resistance against chloride and sulphate attacks. Slagcem is a series of products that combines Ground Granulated Blast Furnace Slag (GGBS) and Ordinary Portland Cement (OPC). This product range consists of",
+      "pricing": {
+        "sell_price": 490.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/SLAGCEM_20ebb62b23.jpg",
+      "link": "https://ytlcement.my/product/slagcem"
     },
     {
-      "sku_code": "CONC_DECOBUILD",
-      "sku": "CONC_DECOBUILD",
-      "product_retailer_id": "11",
-      "category": "concrete",
-      "section_title": "Concrete",
-      "product_name": "DecoBuild",
-      "name": "DecoBuild – decorative concrete systems",
-      "official_name": "DecoBuild Concrete",
-      "description": "DecoBuild is a collection of aesthetic concrete floor and pavement solutions for internal and external applications.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU11",
+      "sku": "SKU11",
+      "product_retailer_id": "SKU11",
+      "category": "Bulk cement",
+      "product_name": "portland cement",
+      "name": "portland cement – Bulk cement",
+      "description": "Portland Cement is the most widely used cement in the construction industry. It is a general purpose cement that has consistent product quality and quality assurance, good early strength development as well as good workability and slump retention. It is suitable for a variety of applications such as concreting for",
+      "pricing": {
+        "sell_price": 445.6
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_05_02_6913509c35.jpg",
+      "link": "https://ytlcement.my/product/portland-cement"
     },
     {
-      "sku_code": "CONC_AQUABUILD",
-      "sku": "CONC_AQUABUILD",
-      "product_retailer_id": "12",
-      "category": "concrete",
-      "section_title": "Concrete",
-      "product_name": "AquaBuild",
-      "name": "AquaBuild – pervious concrete pavement",
-      "official_name": "AquaBuild Concrete",
-      "description": "AquaBuild is a pervious concrete pavement solution designed to direct stormwater off streets and pavements.",
-      "pricing": { "sell_price": 280.0 },
-      "unit": "bag"
+      "sku_code": "SKU12",
+      "sku": "SKU12",
+      "product_retailer_id": "SKU12",
+      "category": "Bulk cement",
+      "product_name": "quickcast",
+      "name": "quickcast – Bulk cement",
+      "description": "Quickcast is a specially manufactured Fly Ash blended cement. It is produced by adding controlled amounts of Fly Ash to the requisite proportions of clinker and gypsum during the grinding process. This intergrinding process ensures homogeneity and consistency in the quality of Quickcast. Quickcast is a specially manufactured Fly Ash",
+      "pricing": {
+        "sell_price": 460.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/QUICKCAST_dda789c8d5.jpg",
+      "link": "https://ytlcement.my/product/quickcast"
+    },
+    {
+      "sku_code": "SKU13",
+      "sku": "SKU13",
+      "product_retailer_id": "SKU13",
+      "category": "Bulk cement",
+      "product_name": "roadcem",
+      "name": "roadcem – Bulk cement",
+      "description": "RoadCem is a specialised cementitious road binder designed to meet the needs of a wide range of stabilisation and road recycling projects. It provides strength, stability, and durability to projects and is suitable for Cold In-Place Recycling (CIPR) works, embankment stabilisation and slope protection, in-situ stabilisation, and more. RoadCem is",
+      "pricing": {
+        "sell_price": 520.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_02_00d2707a12.jpg",
+      "link": "https://ytlcement.my/product/road-cem"
+    },
+    {
+      "sku_code": "SKU14",
+      "sku": "SKU14",
+      "product_retailer_id": "SKU14",
+      "category": "Bulk cement",
+      "product_name": "sulphate resisting cement",
+      "name": "sulphate resisting cement – Bulk cement",
+      "description": "Sulphate Resisting Cement is specially manufactured with low C3A content. It is designed to give maximum protection against corrosion caused by sulphate. This helps protect steel reinforcements inside concrete structures, preventing it from cracking and spalling due to corrosion. It is a high-quality cement made for concrete structures that come",
+      "pricing": {
+        "sell_price": 500.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_03_ef2ab1f2fe.jpg",
+      "link": "https://ytlcement.my/product/sulphate-resisting-cement"
+    },
+    {
+      "sku_code": "SKU15",
+      "sku": "SKU15",
+      "product_retailer_id": "SKU15",
+      "category": "Bulk cement",
+      "product_name": "oil well cement",
+      "name": "oil well cement – Bulk cement",
+      "description": "Oil Well Cement is used for the cementing of oil wells. It is specially formulated with thickening characteristics necessary for pumping into oil wells. It is able to withstand high pressure and temperature for Oil and Gas applications. Oil well cement is a specialty cement used to fill the void",
+      "pricing": {
+        "sell_price": 650.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_04_470676c9df.jpg",
+      "link": "https://ytlcement.my/product/oil-well-cement"
+    },
+    {
+      "sku_code": "SKU16",
+      "sku": "SKU16",
+      "product_retailer_id": "SKU16",
+      "category": "ECOConcrete™",
+      "product_name": "ecobuild",
+      "name": "ecobuild – ECOConcrete™",
+      "description": "EcoBuild is our eco-friendly concrete with OPC replacement ranging from 20% to 55%. This innovative formulation effectively reduces CO₂ emissions. EcoBuild also minimizes thermal cracking by producing less heat of hydration during curing. Additionally, it exhibits exceptional resistance to chloride, sulphate, and alkali-silica reactions, making it ideal for use in",
+      "pricing": {
+        "sell_price": 299.9
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_09_64f061ca54.jpg",
+      "link": "https://ytlcement.my/product/ecobuild"
+    },
+    {
+      "sku_code": "SKU17",
+      "sku": "SKU17",
+      "product_retailer_id": "SKU17",
+      "category": "ECOConcrete™",
+      "product_name": "aquabuild",
+      "name": "aquabuild – ECOConcrete™",
+      "description": "AquaBuild is our pervious concrete pavement solution. It is specially formulated to direct stormwater off streets, parking surfaces, driveways, and walkways. AquaBuild is a sustainable pavement solution that combines the durability of concrete with advanced drainage technology.",
+      "pricing": {
+        "sell_price": 340.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_06_c4ecbf9210.jpg",
+      "link": "https://ytlcement.my/product/aquabuild"
+    },
+    {
+      "sku_code": "SKU18",
+      "sku": "SKU18",
+      "product_retailer_id": "SKU18",
+      "category": "ECOConcrete™",
+      "product_name": "decobuild",
+      "name": "decobuild – ECOConcrete™",
+      "description": "DecoBuild is our collection of aesthetic concrete floor and pavement solutions for both internal and external applications. They combine beautiful designs with practicality and durability. We have a range of designs to choose from: -DecoBuild Line -DecoBuild Print -DecoBuild Stone -DecoBuild Exposed",
+      "pricing": {
+        "sell_price": 360.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_07_460b240819.jpg",
+      "link": "https://ytlcement.my/product/decobuild"
+    },
+    {
+      "sku_code": "SKU19",
+      "sku": "SKU19",
+      "product_retailer_id": "SKU19",
+      "category": "ECOConcrete™",
+      "product_name": "flowbuild pro",
+      "name": "flowbuild pro – ECOConcrete™",
+      "description": "FlowBuild Pro is our self-consolidating concrete that provides solutions and opportunities for design. It helps reduce effort on site during concrete placement, accelerates the concrete placement process, eliminates the need for vibration, provides high surface quality, and results in high quality fill for vertical components. With its high slump, the",
+      "pricing": {
+        "sell_price": 380.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_08_cc1a68a48b.jpg",
+      "link": "https://ytlcement.my/product/flowbuild-pro"
+    },
+    {
+      "sku_code": "SKU20",
+      "sku": "SKU20",
+      "product_retailer_id": "SKU20",
+      "category": "ECOConcrete™",
+      "product_name": "superbuild",
+      "name": "superbuild – ECOConcrete™",
+      "description": "SuperBuild is an innovative concrete formulation with high compressive strength, offering numerous benefits in the construction industry. Its remarkable strength allows for the utilization of smaller load-carrying elements, leading to improved design flexibility and enhanced durability of structures. By employing SuperBuild, architects and engineers can create buildings with more efficient",
+      "pricing": {
+        "sell_price": 350.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_11_794a53c1d0.jpg",
+      "link": "https://ytlcement.my/product/superbuild"
+    },
+    {
+      "sku_code": "SKU21",
+      "sku": "SKU21",
+      "product_retailer_id": "SKU21",
+      "category": "ECOConcrete™",
+      "product_name": "coolbuild",
+      "name": "coolbuild – ECOConcrete™",
+      "description": "CoolBuild is designed to reduce the temperature differential between the core and surface subsequent to concrete placement, thereby mitigating the risk of cracking. CoolBuild's composition not only addresses this critical concern but also exhibits exceptional resistance against the damaging effects of chloride, sulphate, and alkali-silica reactions, bolstering its durability and",
+      "pricing": {
+        "sell_price": 330.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_10_7505139a4d.jpg",
+      "link": "https://ytlcement.my/product/coolbuild"
+    },
+    {
+      "sku_code": "SKU22",
+      "sku": "SKU22",
+      "product_retailer_id": "SKU22",
+      "category": "ECOConcrete™",
+      "product_name": "flowbuild",
+      "name": "flowbuild – ECOConcrete™",
+      "description": "FlowBuild is our high slump flow concrete solution that boasts remarkable workability without the need for additional water. This distinctive characteristic provides construction teams with enhanced productivity and improved quality throughout their projects. The good workability of FlowBuild allows for seamless pouring and placement, facilitating efficient construction processes. With its",
+      "pricing": {
+        "sell_price": 320.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_12_05bcb7d13c.jpg",
+      "link": "https://ytlcement.my/product/flowbuild"
+    },
+    {
+      "sku_code": "SKU23",
+      "sku": "SKU23",
+      "product_retailer_id": "SKU23",
+      "category": "ECOConcrete™",
+      "product_name": "fairbuild",
+      "name": "fairbuild – ECOConcrete™",
+      "description": "FairBuild is a specially designed concrete mix that combines structural integrity with a refined visual finish, ideal for projects where both performance and appearance are key. Its formulation eliminates the need for surface treatments such as plastering or painting, offering a clean, smooth, and modern finish straight from the formwork.",
+      "pricing": {
+        "sell_price": 340.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_17_ba30b4e98b.jpg",
+      "link": "https://ytlcement.my/product/fairbuild"
+    },
+    {
+      "sku_code": "SKU24",
+      "sku": "SKU24",
+      "product_retailer_id": "SKU24",
+      "category": "ECOConcrete™",
+      "product_name": "rapidbuild",
+      "name": "rapidbuild – ECOConcrete™",
+      "description": "RapidBuild is a high early strength concrete that offers good workability, pumpability, placing quality, and durability. Its high performance characteristics allow for fast turnaround and increased construction site efficiency. Builders can expedite project timelines, reduce construction time, and optimize resource utilization, resulting in improved productivity and cost savings. Additionally, RapidBuild",
+      "pricing": {
+        "sell_price": 360.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_13_a7ebd9842c.jpg",
+      "link": "https://ytlcement.my/product/rapidbuild"
+    },
+    {
+      "sku_code": "SKU25",
+      "sku": "SKU25",
+      "product_retailer_id": "SKU25",
+      "category": "ECOConcrete™",
+      "product_name": "flexbuild",
+      "name": "flexbuild – ECOConcrete™",
+      "description": "FlexBuild is our extended slump retention concrete to improve slump retention, eliminating the need for job site re-tempering or addition of High Range Water Reducers. It maintains the workability of concrete for a longer time, which is helpful for supplies to remote areas and allows for extended discharge times. The",
+      "pricing": {
+        "sell_price": 330.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_15_6abc2d3710.jpg",
+      "link": "https://ytlcement.my/product/flexbuild"
+    },
+    {
+      "sku_code": "SKU26",
+      "sku": "SKU26",
+      "product_retailer_id": "SKU26",
+      "category": "ECOConcrete™",
+      "product_name": "fibrebuild",
+      "name": "fibrebuild – ECOConcrete™",
+      "description": "FibreBuild is our fibre reinforced concrete solution, meticulously designed to enhance structural robustness, tensile strength, and load-bearing properties. FibreBuild significantly improves the concrete's ability to withstand tension, resulting in a more robust and resilient material. Furthermore, FibreBuild provides practical benefits such as reducing the formation of cracks, improving durability, and",
+      "pricing": {
+        "sell_price": 345.0
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/workingfile3_14_93fe28458d.jpg",
+      "link": "https://ytlcement.my/product/fibrebuild"
+    },
+    {
+      "sku_code": "SKU27",
+      "sku": "SKU27",
+      "product_retailer_id": "SKU27",
+      "category": "Designated Concrete",
+      "product_name": "designated concrete",
+      "name": "designated concrete – Designated Concrete",
+      "description": "Concrete for various common applications, including housing, structures, and other construction. This concrete is used in various applications, such as housing, structures, and other construction.",
+      "pricing": {
+        "sell_price": 299.9
+      },
+      "unit": "m³",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Designated_Concrete_1_e3d97349cb.jpg",
+      "link": "https://ytlcement.my/product/designated-concrete"
+    },
+    {
+      "sku_code": "SKU28",
+      "sku": "SKU28",
+      "product_retailer_id": "SKU28",
+      "category": "ECOSand™",
+      "product_name": "ecosand™",
+      "name": "ecosand™ – ECOSand™",
+      "description": "ECOSand™ is a high quality, cubical-shaped fine aggregate that is an ideal substitute for natural sand. ECOSand™ is our high-quality manufactured sand. We use a Vertical Shaft Impactor to produce these cubical-shaped fine aggregates that is ideal for ready-mixed concreting, and precast concrete applications. By using ECOSand™, environmentally destructive sand",
+      "pricing": {
+        "sell_price": 52.6
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/ECO_Sand_2ac63ba137.jpg",
+      "link": "https://ytlcement.my/product/eco-sand"
+    },
+    {
+      "sku_code": "SKU29",
+      "sku": "SKU29",
+      "product_retailer_id": "SKU29",
+      "category": "Coarse Aggregates",
+      "product_name": "single-sized and graded aggregates",
+      "name": "single-sized and graded aggregates – Coarse Aggregates",
+      "description": "Our crushed aggregates range from 10mm to 20mm in size and are produced using Vertical Shaft Impactor. These are ideal in making concrete precast, asphalt, and other construction products. Our crushed aggregates range from 10mm to 20mm in size, and are produced using a Vertical Shaft Impactor. Ideal for concrete",
+      "pricing": {
+        "sell_price": 42.4
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/VIV_00502_a272152b38.png",
+      "link": "https://ytlcement.my/product/single-sized-and-graded-aggregates"
+    },
+    {
+      "sku_code": "SKU30",
+      "sku": "SKU30",
+      "product_retailer_id": "SKU30",
+      "category": "Coarse Aggregates",
+      "product_name": "ballast",
+      "name": "ballast – Coarse Aggregates",
+      "description": "Ballast consists of durable and wear-resistant granite with large (40mm to 50mm size) angular pieces that lock together.",
+      "pricing": {
+        "sell_price": 42.4
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Rectangle_386_a549917d61.png",
+      "link": "https://ytlcement.my/product/ballast"
+    },
+    {
+      "sku_code": "SKU31",
+      "sku": "SKU31",
+      "product_retailer_id": "SKU31",
+      "category": "Coarse Aggregates",
+      "product_name": "crusher run",
+      "name": "crusher run – Coarse Aggregates",
+      "description": "This quarry product is made up of a combination of crushed rocks and stone dust to create a very low-void content subbase aggregate. It is available in two sizes: 20mm and 40mm. It is suitable to be used during the construction of roads, retaining walls, and rail tracks.",
+      "pricing": {
+        "sell_price": 26.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Rectangle_387_785e06878a.png",
+      "link": "https://ytlcement.my/product/crusher-run"
+    },
+    {
+      "sku_code": "SKU32",
+      "sku": "SKU32",
+      "product_retailer_id": "SKU32",
+      "category": "Coarse Aggregates",
+      "product_name": "chipping (10mm)",
+      "name": "chipping (10mm) – Coarse Aggregates",
+      "description": "Our chipping products are specifically made for the premix industry, and for construction in congested spaces. The fine aggregate is consistent in quality, making it suitable for ready-mix concrete, concrete precast, and premix.",
+      "pricing": {
+        "sell_price": 26.0
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_copy_2_2x_100_3_1_da75086198.jpg",
+      "link": "https://ytlcement.my/product/chipping-10mm"
+    },
+    {
+      "sku_code": "SKU33",
+      "sku": "SKU33",
+      "product_retailer_id": "SKU33",
+      "category": "",
+      "product_name": "aggregates 14mm and 28mm",
+      "name": "aggregates 14mm and 28mm – ",
+      "description": "Our aggregates are specially produced for specific requirements. It offers consistent quality to be used to make premix.",
+      "pricing": {
+        "sell_price": 42.4
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Aggregates_14mm_and_28mm_2_bdae2f262b.jpg",
+      "link": "https://ytlcement.my/product/aggregates-14mm-and-28mm"
+    },
+    {
+      "sku_code": "SKU34",
+      "sku": "SKU34",
+      "product_retailer_id": "SKU34",
+      "category": "Coarse Aggregates",
+      "product_name": "bespoke products (customised)",
+      "name": "bespoke products (customised) – Coarse Aggregates",
+      "description": "We produce customised products made for specific requirements. <u>Armour Rock</u> Our armour rocks offer consistent quality, and are specially produced for erosion protection, landscaping, embankment construction, and shore protection. <u>Stone Column</u> Stone columns are crushed coarse aggregates of various sizes and ratio that can be used to enhance the load",
+      "pricing": {
+        "sell_price": 399.9
+      },
+      "unit": "tonne",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_44_2_3e96daa9e4.jpg",
+      "link": "https://ytlcement.my/product/bespoke-products-customised"
+    },
+    {
+      "sku_code": "SKU35",
+      "sku": "SKU35",
+      "product_retailer_id": "SKU35",
+      "category": "ECODrymix™",
+      "product_name": "quickrender-s1 (387-s1)",
+      "name": "quickrender-s1 (387-s1) – ECODrymix™",
+      "description": "QuickRender-S1 (387-S1) is a high quality, versatile premixed mortar with high bonding strength that offers 2-in-1 function – bricklaying and plastering. It is suitable for internal and external applications. QuickRender-S1 (387-S1) is a high quality, versatile premixed mortar with high bonding strength that gives 2-in-1 functionality – bricklaying and plastering.",
+      "pricing": {
+        "sell_price": 20.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/387_S1_37b58e2223.jpg",
+      "link": "https://ytlcement.my/product/quickrender-s1-387-s1"
+    },
+    {
+      "sku_code": "SKU36",
+      "sku": "SKU36",
+      "product_retailer_id": "SKU36",
+      "category": "ECODrymix™",
+      "product_name": "thin-joint mortar (362)",
+      "name": "thin-joint mortar (362) – ECODrymix™",
+      "description": "Thin-Joint Mortar (362) is a high-performance premixed cementitious adhesive mortar with high adhesive strength. It is designed for jointing Aerated Lightweight Concrete (ALC) blocks.",
+      "pricing": {
+        "sell_price": 29.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/362_27809e8c02.jpg",
+      "link": "https://ytlcement.my/product/thin-joint-mortar-362"
+    },
+    {
+      "sku_code": "SKU37",
+      "sku": "SKU37",
+      "product_retailer_id": "SKU37",
+      "category": "ECODrymix™",
+      "product_name": "quickplast (399 / 397)",
+      "name": "quickplast (399 / 397) – ECODrymix™",
+      "description": "QuickPlast (399 / 397) is a polymer-modified plastering cement with better workability and high water retention properties to improve crack control. It is designed for brick and block walls, and is suitable for internal and external applications.",
+      "pricing": {
+        "sell_price": 26.7
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/399_9d9a938756.jpg",
+      "link": "https://ytlcement.my/product/quickplast-399-397"
+    },
+    {
+      "sku_code": "SKU38",
+      "sku": "SKU38",
+      "product_retailer_id": "SKU38",
+      "category": "ECODrymix™",
+      "product_name": "spatterdash (390)",
+      "name": "spatterdash (390) – ECODrymix™",
+      "description": "Spatterdash (390) is a high-performance, polymer-modified premixed mortar designed as a mechanical key coat to enhance bonding on block walls and reinforced concrete surfaces. It increases substrate roughness, promoting superior mechanical adhesion for plaster or render. Suitable for both interior and exterior applications, it ensures strong and lasting bonding strength",
+      "pricing": {
+        "sell_price": 23.85
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Website_Spatterdash_390_e4812aad77.png",
+      "link": "https://ytlcement.my/product/spatterdash-390"
+    },
+    {
+      "sku_code": "SKU39",
+      "sku": "SKU39",
+      "product_retailer_id": "SKU39",
+      "category": "ECODrymix™",
+      "product_name": "quickrender+ (387+)",
+      "name": "quickrender+ (387+) – ECODrymix™",
+      "description": "QuickRender+ (387+) is a high-performance polymer-modified, premixed mortar with excellent adhesion and textured finish. It is designed for concrete walls, and all types of block walls. It is an ideal solution for wall alignment work that requires thicker undercoat application. It is suitable for internal and external applications.",
+      "pricing": {
+        "sell_price": 22.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/387_346bacfa28.jpg",
+      "link": "https://ytlcement.my/product/quickrender-plus-387-plus"
+    },
+    {
+      "sku_code": "SKU40",
+      "sku": "SKU40",
+      "product_retailer_id": "SKU40",
+      "category": "ECODrymix™",
+      "product_name": "thin plaster+ (386+)",
+      "name": "thin plaster+ (386+) – ECODrymix™",
+      "description": "Thin Plaster+ (386+) is a high-performance polymer-modified, premixed mortar with excellent adhesion and semi-smooth finish for thicker applications. It is designed for concrete walls, and all types of block walls. It is suitable for internal and external applications.",
+      "pricing": {
+        "sell_price": 23.85
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/386_6abfc8b74a.jpg",
+      "link": "https://ytlcement.my/product/thin-plaster-plus-386-plus"
+    },
+    {
+      "sku_code": "SKU41",
+      "sku": "SKU41",
+      "product_retailer_id": "SKU41",
+      "category": "ECODrymix™",
+      "product_name": "quickrender (387)",
+      "name": "quickrender (387) – ECODrymix™",
+      "description": "QuickRender (387) is a high-performance polymer-modified, premixed mortar with high adhesion. It gives a textured finish for thin applications, and, is designed for concrete walls and all types of block walls. It is suitable for internal and external applications.",
+      "pricing": {
+        "sell_price": 20.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/387_c0e7dd5df1.jpg",
+      "link": "https://ytlcement.my/product/quickrender-387"
+    },
+    {
+      "sku_code": "SKU42",
+      "sku": "SKU42",
+      "product_retailer_id": "SKU42",
+      "category": "ECODrymix™",
+      "product_name": "thin plaster (386)",
+      "name": "thin plaster (386) – ECODrymix™",
+      "description": "Thin Plaster (386) is a high-performance polymer-modified, premixed mortar with high adhesion and semi-smooth finish for thin applications. It is designed for concrete walls, and all types of block walls. It is suitable for internal and external applications.",
+      "pricing": {
+        "sell_price": 20.5
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/386_ac6869a96f.jpg",
+      "link": "https://ytlcement.my/product/thin-plaster-386"
+    },
+    {
+      "sku_code": "SKU43",
+      "sku": "SKU43",
+      "product_retailer_id": "SKU43",
+      "category": "ECODrymix™",
+      "product_name": "base grey (380)",
+      "name": "base grey (380) – ECODrymix™",
+      "description": "Base Grey (380) is a polymer-modified, water-resistant, cementitious skim coating (base coat) that is grey in colour. It is designed for surface improvement on cement rendered surfaces, undercoat for concrete surfaces, block walls, and ceilings. It gives, perfect levelling that results in a final smooth-finish skim coat. It is suitable",
+      "pricing": {
+        "sell_price": 19.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/380_1d256b6a0e.jpg",
+      "link": "https://ytlcement.my/product/base-grey-380"
+    },
+    {
+      "sku_code": "SKU44",
+      "sku": "SKU44",
+      "product_retailer_id": "SKU44",
+      "category": "ECODrymix™",
+      "product_name": "base white (385)",
+      "name": "base white (385) – ECODrymix™",
+      "description": "Base White (385) is a polymer-modified, water-resistant, cementitious skim coating (base coat) that is white in colour. It is designed for surface improvement on cement rendered surfaces, undercoat for concrete surfaces, block walls, and ceilings. It gives, perfect levelling that results in a final smooth-finish skim coat. It is suitable",
+      "pricing": {
+        "sell_price": 21.7
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/385_bcadff0ac1.jpg",
+      "link": "https://ytlcement.my/product/base-white-385"
+    },
+    {
+      "sku_code": "SKU45",
+      "sku": "SKU45",
+      "product_retailer_id": "SKU45",
+      "category": "ECODrymix™",
+      "product_name": "quickskim (388)",
+      "name": "quickskim (388) – ECODrymix™",
+      "description": "QuickSkim (388) is a high-performance polymer-modified, water-resistant, cementitious skim coating (finish coat) that is off-white in colour. It is formulated for good workability, adhesion, durability, and smooth finishes. It is suitable for internal applications.",
+      "pricing": {
+        "sell_price": 20.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/388_e5188ea0ee.jpg",
+      "link": "https://ytlcement.my/product/quickskim-388"
+    },
+    {
+      "sku_code": "SKU46",
+      "sku": "SKU46",
+      "product_retailer_id": "SKU46",
+      "category": "ECODrymix™",
+      "product_name": "quickskim+ (388+)",
+      "name": "quickskim+ (388+) – ECODrymix™",
+      "description": "QuickSkim+ (388+) is a high-performance, polymer-modified, water-resistant cementitious skim coat with an off-white finish. Specially formulated for enhanced flexibility and water repellence, it helps protect against efflorescence and mould growth. Designed for excellent workability, adhesion, and durability, QuickSkim+ (388+) is suitable for both internal and external applications.",
+      "pricing": {
+        "sell_price": 22.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/w388_5740659f29.png",
+      "link": "https://ytlcement.my/product/quickskim-388-plus"
+    },
+    {
+      "sku_code": "SKU47",
+      "sku": "SKU47",
+      "product_retailer_id": "SKU47",
+      "category": "ECODrymix™",
+      "product_name": "finish white (382)",
+      "name": "finish white (382) – ECODrymix™",
+      "description": "Finish White (382) is a high-performance polymer-modified, water-resistant, cementitious skim coating (finish coat) that is off-white in colour. It is formulated for good workability, adhesion, durability, and smooth finishes. It is suitable for internal application.",
+      "pricing": {
+        "sell_price": 25.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/382_a753edd602.jpg",
+      "link": "https://ytlcement.my/product/finish-white-382"
+    },
+    {
+      "sku_code": "SKU48",
+      "sku": "SKU48",
+      "product_retailer_id": "SKU48",
+      "category": "ECODrymix™",
+      "product_name": "quickcoat+ (389)",
+      "name": "quickcoat+ (389) – ECODrymix™",
+      "description": "QuickCoat+ (389) is a high-performance polymer-modified, hydrophobic, cementitious exterior skim coat (finish coat). It is specially formulated to have improved flexibility and good water repellence to protect against cracks and efflorescence. It is suitable for rendered walls, concrete walls, and ceilings, and provides excellent protection against the building envelope.",
+      "pricing": {
+        "sell_price": 38.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/389_e45c8e164c.jpg",
+      "link": "https://ytlcement.my/product/quickcoat-plus-389"
+    },
+    {
+      "sku_code": "SKU49",
+      "sku": "SKU49",
+      "product_retailer_id": "SKU49",
+      "category": "Repair solutions",
+      "product_name": "liquidrender 2000 (f)",
+      "name": "liquidrender 2000 (f) – Repair solutions",
+      "description": "LiquidRender 2000 (F) is a high-performance, ready-to-use hydrophobic coating designed for finishing skim applications. This polymer-modified skim coat delivers a thin, refined layer with a marble-like smooth finish, perfect for protecting interior surfaces. Specially formulated with high flexibility and water-repellent properties, it accommodates minor surface movements to minimise the risk",
+      "pricing": {
+        "sell_price": 45.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Liquid_Render_2000_F_dfcaf8a711.png",
+      "link": "https://ytlcement.my/product/liquidrender-2000-f"
+    },
+    {
+      "sku_code": "SKU50",
+      "sku": "SKU50",
+      "product_retailer_id": "SKU50",
+      "category": "ECODrymix™",
+      "product_name": "liquidrender 2000 (c)",
+      "name": "liquidrender 2000 (c) – ECODrymix™",
+      "description": "LiquidRender 2000 (C) is a high build water-based and ready-for-use premixed polymer render for quick and easy thin surface refinements that has a sandstone textured finish. It is specially formulated to protect against cracks, mould, and efflorescence with its high flexibility, and water repellence. It can also be used to",
+      "pricing": {
+        "sell_price": 45.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Liquid_Render_2000_C_797f49c254.png",
+      "link": "https://ytlcement.my/product/liquidrender-2000-c"
+    },
+    {
+      "sku_code": "SKU51",
+      "sku": "SKU51",
+      "product_retailer_id": "SKU51",
+      "category": "ECODrymix™",
+      "product_name": "floor screed (383)",
+      "name": "floor screed (383) – ECODrymix™",
+      "description": "Floor Screed (383) is a high-quality, ready-to-use, pre-packed mortar. This premixed, cementitious floor screed is specially formulated for use on concrete slabs. It is also highly durable, and helps to minimise cracks due to shrinkage, making it ideal for floor levelling.",
+      "pricing": {
+        "sell_price": 20.85
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/383_bda3707ab0.jpg",
+      "link": "https://ytlcement.my/product/floor-screed-383"
+    },
+    {
+      "sku_code": "SKU52",
+      "sku": "SKU52",
+      "product_retailer_id": "SKU52",
+      "category": "ECODrymix™",
+      "product_name": "superbond (369)",
+      "name": "superbond (369) – ECODrymix™",
+      "description": "Superbond (369) is a high performance polymer-modified premixed cementitious wall and floor tile adhesive that gives flexibility, slip resistance, and more. Superbond (369) is a high-performance polymer-modified, premixed, cementitious wall and floor tile adhesive that gives excellent bonding strength, flexibility, slip resistance, and extended open time. It is suitable for",
+      "pricing": {
+        "sell_price": 39.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Super_Bond_369_58d90452af.png",
+      "link": "https://ytlcement.my/product/superbond-369"
+    },
+    {
+      "sku_code": "SKU53",
+      "sku": "SKU53",
+      "product_retailer_id": "SKU53",
+      "category": "ECODrymix™",
+      "product_name": "tile adhesive+ (361+)",
+      "name": "tile adhesive+ (361+) – ECODrymix™",
+      "description": "Tile Adhesive+ (361+) is a polymer-modified, premixed cementitious wall and floor tile adhesive. It offers excellent bonding strength, slip resistance, and extended open time for easier tile placement. Tile Adhesive+ (361+) is suitable for medium to large wall and floor tiles.",
+      "pricing": {
+        "sell_price": 27.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/w361_af2e35a8a2.png",
+      "link": "https://ytlcement.my/product/tile-adhesive-361"
+    },
+    {
+      "sku_code": "SKU54",
+      "sku": "SKU54",
+      "product_retailer_id": "SKU54",
+      "category": "ECODrymix™",
+      "product_name": "tile adhesive (361)",
+      "name": "tile adhesive (361) – ECODrymix™",
+      "description": "Tile Adhesive (361) is a polymer-modified premixed cementitious wall and floor tile adhesive for excellent bonding strength, slip resistance, and extended open time. Tile Adhesive (361) is a polymer-modified, premixed, cementitious wall and floor tile adhesive. It has excellent bonding strength, slip resistance, and extended open time. Tile Adhesive (361)",
+      "pricing": {
+        "sell_price": 23.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Tile_Adhesive_361_00f04afb35.png",
+      "link": "https://ytlcement.my/product/tile-adhesvie-361"
+    },
+    {
+      "sku_code": "SKU55",
+      "sku": "SKU55",
+      "product_retailer_id": "SKU55",
+      "category": "ECODrymix™",
+      "product_name": "thick-bed adhesive (363)",
+      "name": "thick-bed adhesive (363) – ECODrymix™",
+      "description": "Thick–Bed Adhesive (363) is a polymer-modified, premixed, cementitious floor tile adhesive that results in excellent bonding strength, and extended open time. It is specially designed for thicker bedding on floor slabs to save the hassle required to precisely level floors beforehand. It is suitable for small to medium wall and",
+      "pricing": {
+        "sell_price": 25.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/363_4a1e13d316.jpg",
+      "link": "https://ytlcement.my/product/thick-bed-adhesive-363"
+    },
+    {
+      "sku_code": "SKU56",
+      "sku": "SKU56",
+      "product_retailer_id": "SKU56",
+      "category": "ECODrymix™",
+      "product_name": "readyfix (360)",
+      "name": "readyfix (360) – ECODrymix™",
+      "description": "ReadyFix (360) is a polymer-modified, premixed, cementitious adhesive for interior floor and wall bonding of small to medium ceramic tiles. It is easy to use and offers good workability, bonding strength, and durability.",
+      "pricing": {
+        "sell_price": 13.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/360_f4d692c34e.jpg",
+      "link": "https://ytlcement.my/product/readyfix-360"
+    },
+    {
+      "sku_code": "SKU57",
+      "sku": "SKU57",
+      "product_retailer_id": "SKU57",
+      "category": "ECODrymix™",
+      "product_name": "tile grout",
+      "name": "tile grout – ECODrymix™",
+      "description": "Tile Grout is a high-performance, unsanded, cementitious-based grout. Our improved formula reduces water absorption, and enhances abrasion resistance. It can be used for grouting joints of up to 2mm.",
+      "pricing": {
+        "sell_price": 18.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/TILEGROUT_98091e07bd.jpg",
+      "link": "https://ytlcement.my/product/tile-grout"
+    },
+    {
+      "sku_code": "SKU58",
+      "sku": "SKU58",
+      "product_retailer_id": "SKU58",
+      "category": "ECODrymix™",
+      "product_name": "liquidbond 3000",
+      "name": "liquidbond 3000 – ECODrymix™",
+      "description": "LiquidBond 3000 is a high-performance synthetic latex admixture formulated to enhance the performance and durability of cementitious mixes. It improves adhesion to a wide range of substrates while increasing flexural strength, abrasion resistance, and water repellency. Suitable for use as a direct bonding agent or as an additive in mortar,",
+      "pricing": {
+        "sell_price": 65.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/w_LB_3_K20_L_31bd74ef72.png",
+      "link": "https://ytlcement.my/product/liquidBond-3000"
+    },
+    {
+      "sku_code": "SKU59",
+      "sku": "SKU59",
+      "product_retailer_id": "SKU59",
+      "category": "Repair solutions",
+      "product_name": "liquidrepair 1000",
+      "name": "liquidrepair 1000 – Repair solutions",
+      "description": "LiquidRepair 1000 is used to repair fine cracks of up to 1mm in width on interior and exterior cement rendered surfaces. It is formulated with water repellent properties for long term repair. It comes ready to use, and can be applied even on emulsion painted surfaces.",
+      "pricing": {
+        "sell_price": 55.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/LR_1000_1a5b4bc07c.jpg",
+      "link": "https://ytlcement.my/product/liquidrepair-1000"
+    },
+    {
+      "sku_code": "SKU60",
+      "sku": "SKU60",
+      "product_retailer_id": "SKU60",
+      "category": "ECODrymix™",
+      "product_name": "hs grout 80 (217)",
+      "name": "hs grout 80 (217) – ECODrymix™",
+      "description": "HS Grout 80 (217) is a high strength, high workability, non-shrink cementitious grout specially engineered for IBS precast construction. With excellent high early strength performance and pumpable consistency, it delivers reliable, high quality grouting for critical structural connections and demanding site conditions.",
+      "pricing": {
+        "sell_price": 48.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/w217_00b87750ae.png",
+      "link": "https://ytlcement.my/product/HS-Grout-80-217"
+    },
+    {
+      "sku_code": "SKU61",
+      "sku": "SKU61",
+      "product_retailer_id": "SKU61",
+      "category": "ECODrymix™",
+      "product_name": "non-shrink grout (218)",
+      "name": "non-shrink grout (218) – ECODrymix™",
+      "description": "Non-Shrink Grout (218) is a high early strength, multi-purpose, non-shrink. pumpable cementitious grout. It is designed with three consistencies – stiff, pourable and flowable. Non-Shrink Grout (218) is a high early strength, multi-purpose, non-shrink, pumpable cementitious grout. It is designed with three consistencies – stiff, pourable, and flowable.",
+      "pricing": {
+        "sell_price": 42.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/218_13aed277cc.jpg",
+      "link": "https://ytlcement.my/product/non-shrink-grout-218"
+    },
+    {
+      "sku_code": "SKU62",
+      "sku": "SKU62",
+      "product_retailer_id": "SKU62",
+      "category": "ECODrymix™",
+      "product_name": "shear grout (213)",
+      "name": "shear grout (213) – ECODrymix™",
+      "description": "Shear Grout (213) is a high-quality, cement-based grout specially formulated for filling joints between hollow core slabs after installation. Designed as a reliable alternative to conventional site-mixed materials, it ensures consistent performance and a durable finish.",
+      "pricing": {
+        "sell_price": 39.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/w213_7914daee47.png",
+      "link": "https://ytlcement.my/product/shear-grout-213"
+    },
+    {
+      "sku_code": "SKU63",
+      "sku": "SKU63",
+      "product_retailer_id": "SKU63",
+      "category": "ECODrymix™",
+      "product_name": "flexipatch (219)",
+      "name": "flexipatch (219) – ECODrymix™",
+      "description": "Flexipatch (219) is a multi-purpose, non-shrink, pre-mixed cementitious mortar formulated for a wide range of general concrete repair applications. Flexipatch (219) is a multi-purpose, non-shrink, pre-mixed cementitious mortar formulated for a wide range of general concrete repair applications. It is designed to handle a wide range of repair needs -",
+      "pricing": {
+        "sell_price": 35.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/219_69d48db5a9.jpg",
+      "link": "https://ytlcement.my/product/flexipatch-219"
+    },
+    {
+      "sku_code": "SKU64",
+      "sku": "SKU64",
+      "product_retailer_id": "SKU64",
+      "category": "Repair solutions",
+      "product_name": "quickfill (223)",
+      "name": "quickfill (223) – Repair solutions",
+      "description": "QuickFill (223) is a high-strength, cement-based filler formulated to repair pinholes and minor surface defects on both precast and cast-in-situ concrete. Ideal for internal and external applications, QuickFill offers a durable, long-lasting solution for concrete surface finishing and restoration.",
+      "pricing": {
+        "sell_price": 22.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/w223_6660669ae4_e6cbb1cd12.png",
+      "link": "https://ytlcement.my/product/quickfill-223"
+    },
+    {
+      "sku_code": "SKU65",
+      "sku": "SKU65",
+      "product_retailer_id": "SKU65",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy premix plaster",
+      "name": "quickmix® diy premix plaster – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Premix Plaster is the preferred choice for plastering cement. It offers superior bonding strength, versatile usage, and weather resistance. It is also easy to use, making it suitable for indoor and outdoor applications.",
+      "pricing": {
+        "sell_price": 7.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_16_2_dbdec521f0.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-premix-plaster"
+    },
+    {
+      "sku_code": "SKU66",
+      "sku": "SKU66",
+      "product_retailer_id": "SKU66",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy premix tile grout",
+      "name": "quickmix® diy premix tile grout – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Premix Tile Grout is a long-lasting, premixed mortar to repair broken grout. It comes in white and grey to match ceramic or mosaic tiles.",
+      "pricing": {
+        "sell_price": 10.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_19_1_1a4727e664.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-premix-tile-grout"
+    },
+    {
+      "sku_code": "SKU67",
+      "sku": "SKU67",
+      "product_retailer_id": "SKU67",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy premix tile adhesive",
+      "name": "quickmix® diy premix tile adhesive – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Premix Tile Adhesive guarantees excellent adhesion strength. It is easy to use, and offers excellent adhesion and durability. It is suitable to repair medium sized tiles of 600mm x 600mm for internal applications, and 300 x 600mm for external applications.",
+      "pricing": {
+        "sell_price": 10.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_17_1_4345ae518c.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-premix-tile-adhesive"
+    },
+    {
+      "sku_code": "SKU68",
+      "sku": "SKU68",
+      "product_retailer_id": "SKU68",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy crack repair",
+      "name": "quickmix® diy crack repair – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Crack Repair is designed to repair surface defects, and cracks up to 10mm deep. It offers strong bonding, and flexibility for long term durability. Furthermore, it is made to be ready-to-use, and is easy to apply. QuickMix® DIY Crack Repair is suitable for both internal and external applications.",
+      "pricing": {
+        "sell_price": 11.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_13_1_68ee034567.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-crack-repair"
+    },
+    {
+      "sku_code": "SKU69",
+      "sku": "SKU69",
+      "product_retailer_id": "SKU69",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy tile grout",
+      "name": "quickmix® diy tile grout – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Tile Grout is a fast-setting solution that can be used to fix broken grout. It can be used to seal ceramic and mosaic tiles on both walls and floors. It works great in kitchens, shower recesses, and toilets.",
+      "pricing": {
+        "sell_price": 11.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_21_1_a028dac543.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-tile-grout"
+    },
+    {
+      "sku_code": "SKU70",
+      "sku": "SKU70",
+      "product_retailer_id": "SKU70",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy tile adhesive",
+      "name": "quickmix® diy tile adhesive – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Tile Adhesive simplifies the process of fixing tiles, and can be used on ceramic tiles as small as 300mm x 300mm. It is easy to apply, offers excellent adhesion, and is ready to use. It is suitable to be used to repair wall or floor tiles.",
+      "pricing": {
+        "sell_price": 11.9
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_20_1_f14ffd3b5e.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-tile-adhesive"
+    },
+    {
+      "sku_code": "SKU71",
+      "sku": "SKU71",
+      "product_retailer_id": "SKU71",
+      "category": "Ready-to-use repair solutions",
+      "product_name": "quickmix® diy skim coat",
+      "name": "quickmix® diy skim coat – Ready-to-use repair solutions",
+      "description": "QuickMix® DIY Skim Coat is a wall enhancement coating that repairs and protects walls from hairline cracks and mould. It also functions as a foundation coat before the application of primer or paint. Furthermore, it is ready-to-use and easy to apply. QuickMix DIY Skim Coat is suitable for internal and",
+      "pricing": {
+        "sell_price": 22.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/edits_SC_2_1_b749567d85.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-skim-coat"
+    },
+    {
+      "sku_code": "SKU72",
+      "sku": "SKU72",
+      "product_retailer_id": "SKU72",
+      "category": "Craft solutions",
+      "product_name": "quickmix® diy craft kit",
+      "name": "quickmix® diy craft kit – Craft solutions",
+      "description": "Our QuickMix® DIY Craft Kit comes complete with craft supplies, tools, and instructions. It is ideal for beginners who are keen to get started in crafting with cement.",
+      "pricing": {
+        "sell_price": 80.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_2x_100_15_1_eff67aeb1c.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-craft-kit"
+    },
+    {
+      "sku_code": "SKU73",
+      "sku": "SKU73",
+      "product_retailer_id": "SKU73",
+      "category": "Craft solutions",
+      "product_name": "quickmix® diy craft cement",
+      "name": "quickmix® diy craft cement – Craft solutions",
+      "description": "Our Craft Cement is not only easy to use, but is versatile and gives a smooth finish. Just add water, mix, and create beautiful concrete decorative crafts.",
+      "pricing": {
+        "sell_price": 12.0
+      },
+      "unit": "bag",
+      "image_url": "https://cdn.ytlcement.my/ytl-production-media/ytl-media/assets/Artboard_1_copy_2_2x_100_11_1_c60dc0daa1.jpg",
+      "link": "https://ytlcement.my/product/quickmix-diy-craft-cement"
     }
   ]
 }

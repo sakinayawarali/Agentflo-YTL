@@ -3887,32 +3887,31 @@ class ADKHelper:
 
     def _is_product_overview_intent(self, text: str) -> bool:
         """
-        Product overview intent: user asks what products/mixes/services we have.
-        We handle this with a guided project/use-case question (instead of listing SKUs).
+        Concrete-specific intent: user asks specifically about concrete grades/mixes.
+        General product questions (what products do you have?) are handled by the LLM
+        agent which has full catalog knowledge across all categories.
         """
         if not text:
             return False
         t = text.strip().lower()
-        # NOTE: Do NOT include explicit catalog intent here; that should trigger catalog sending.
         needles = [
-            "what products",
-            "what product",
-            "what do you have",
-            "what do u have",
-            "what do you sell",
-            "what can you supply",
-            "products available",
-            "available products",
             "what concrete do you have",
             "what concrete",
             "concrete do you have",
             "concrete grades",
+            "what grades",
             "what mixes",
+            "ready mix",
+            "ready-mix",
         ]
         return any(n in t for n in needles)
 
     def _project_usecase_menu_text(self) -> str:
-        return "What are you building?"
+        return (
+            "For concrete, what are you building?\n"
+            "A slab, foundation, columns/beams, driveway, or something else?\n\n"
+            "Or if you're looking for *cement, drymix, aggregates, or DIY products*, just let me know!"
+        )
 
     def _parse_project_usecase_choice(self, text: str) -> Optional[int]:
         if not text:
@@ -3948,15 +3947,18 @@ class ADKHelper:
             return msg
 
         if choice == 6:
-            # Clear flow and ask a tighter follow-up.
             try:
                 self.session_helper.set_onboarding_status(user_id, None)
             except Exception:
                 pass
             msg = (
-                "No problem.\n"
-                "Is it closer to a *slab*, *foundations*, *columns/beams*, *decorative finish*, or a *wet area*?\n\n"
-                "Tell me the use-case and how many cubic metres you need."
+                "No problem! We cover more than just concrete.\n\n"
+                "We also offer:\n"
+                "• *ECOCem™* bag cement (Castle, Phoenix, Walcrete, Wallcem)\n"
+                "• *ECODrymix™* premixed mortars (renders, plasters, tile adhesives, grouts)\n"
+                "• *ECOSand™* & Coarse Aggregates\n"
+                "• *QuickMix® DIY* repair & craft products\n\n"
+                "What are you looking for?"
             )
             self._send_text_once(user_id, msg, reply_to_message_id=reply_to_message_id)
             return msg
@@ -3970,19 +3972,38 @@ class ADKHelper:
         }
         usecase_title = title_map.get(choice, "your project")
 
-        # YTL concrete guidance (from knowledge/construction_advice.md)
         if choice == 1:
-            body = "• G25 (standard for residential slabs)\n• Optional upgrade: G30 (improved durability if budget allows)"
+            body = (
+                "• G25 (standard for residential slabs)\n"
+                "• Optional upgrade: G30 (improved durability)\n"
+                "• *FibreBuild* (SKU26) – fibre reinforced for crack resistance"
+            )
         elif choice == 2:
-            body = "• G25 or G30 (house foundations)"
+            body = (
+                "• G25 or G30 (house foundations)\n"
+                "• *EcoBuild* (SKU16) – eco-friendly option with lower CO₂"
+            )
         elif choice == 3:
-            body = "• G30 – G35 (structural columns/beams)"
+            body = (
+                "• G30 – G35 (structural columns/beams)\n"
+                "• *SuperBuild* (SKU20) – high compressive strength"
+            )
         elif choice == 4:
-            body = "• Please share if this is structural or decorative; typical options are G25–G30 for residential work."
+            body = (
+                "• G25–G30 for structural driveways\n"
+                "• *DecoBuild* (SKU18) – aesthetic concrete (Line, Print, Stone, Exposed)\n"
+                "• *FairBuild* (SKU23) – refined visual finish, no painting needed"
+            )
         elif choice == 5:
-            body = "• G30 (and consider waterproofing admixture if required)."
+            body = (
+                "• G30 with waterproofing admixture\n"
+                "• *CoolBuild* (SKU21) – reduced cracking risk"
+            )
         else:
-            body = "• G25–G30 (most residential structural applications)"
+            body = (
+                "• G25–G30 (most residential applications)\n"
+                "• *EcoBuild* (SKU16) – eco-friendly option"
+            )
 
         # Min order from knowledge (5 m³)
         min_line = "\n\nMinimum order: 5 m³."

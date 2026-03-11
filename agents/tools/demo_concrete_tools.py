@@ -51,27 +51,74 @@ def _coerce_float(val: Any) -> Optional[float]:
 
 def recommend_concrete_grade(project_type: str) -> Dict[str, Any]:
     """
-    Recommend a grade based on the construction use-case.
-    Uses the mapping from knowledge/construction_advice.md.
+    Recommend concrete grade(s) for ANY construction project.
+    ALWAYS call this tool when a user mentions what they are building.
+    Accepts any project description including:
+    - Building types: house, unit house, bungalow, terrace, townhouse, semi-d, apartment, condo, shop, warehouse, factory
+    - Structural elements: foundation, slab, beam, column, driveway, wall, pool, bridge
+    - Any free-text description of the project
+    Returns recommended grades for each structural part if it is a whole-building project.
     """
     text = (project_type or "").strip().lower()
     if not text:
-        return {"success": False, "error": "Missing project_type (e.g., house foundation, residential slabs)."}
+        return {"success": False, "error": "Missing project_type (e.g., house, foundation, slabs, commercial building)."}
 
     rules = [
         ("house foundation", "G25 or G30"),
         ("residential slabs", "G25"),
+        ("residential slab", "G25"),
         ("commercial slabs", "G30 – G35"),
+        ("commercial slab", "G30 – G35"),
         ("industrial floors", "G35 – G40"),
+        ("industrial floor", "G35 – G40"),
         ("high-rise structures", "G40 – G45"),
+        ("high-rise", "G40 – G45"),
+        ("highrise", "G40 – G45"),
     ]
 
     for key, grade in rules:
         if key in text:
             return {"success": True, "project_type": key, "recommended_grade": grade}
 
-    # fuzzy fallback
-    if "foundation" in text:
+    _whole_house_keywords = [
+        "house", "unit house", "bungalow", "banglo", "semi-d", "semi d",
+        "terrace", "terraced", "link house", "townhouse", "town house",
+        "residential", "rumah", "home", "apartment", "condo", "condominium",
+        "flat", "duplex", "villa", "cottage", "cabin",
+    ]
+    if any(k in text for k in _whole_house_keywords):
+        return {
+            "success": True,
+            "project_type": project_type,
+            "is_whole_building": True,
+            "recommended_grades": {
+                "foundation": "G25 or G30",
+                "ground_slab": "G25 (or FibreBuild for crack resistance)",
+                "beams_columns": "G30",
+                "upper_floor_slabs": "G25 – G30",
+            },
+            "eco_option": "EcoBuild (SKU16) – eco-friendly with lower CO₂",
+            "note": "Ask customer which part they are pouring first, or provide a combined quote.",
+        }
+
+    _commercial_keywords = [
+        "commercial", "office", "shop", "shoplot", "retail", "mall",
+        "warehouse", "factory", "parking", "car park",
+    ]
+    if any(k in text for k in _commercial_keywords):
+        return {
+            "success": True,
+            "project_type": project_type,
+            "is_whole_building": True,
+            "recommended_grades": {
+                "foundation": "G30 – G35",
+                "slabs": "G30 – G35",
+                "beams_columns": "G35",
+            },
+            "eco_option": "SuperBuild (SKU20) – high compressive strength",
+        }
+
+    if "foundation" in text or "footing" in text:
         return {"success": True, "project_type": project_type, "recommended_grade": "G25 or G30"}
     if "slab" in text and "commercial" in text:
         return {"success": True, "project_type": project_type, "recommended_grade": "G30 – G35"}
@@ -79,12 +126,28 @@ def recommend_concrete_grade(project_type: str) -> Dict[str, Any]:
         return {"success": True, "project_type": project_type, "recommended_grade": "G25"}
     if "industrial" in text or "floor" in text:
         return {"success": True, "project_type": project_type, "recommended_grade": "G35 – G40"}
-    if "high" in text or "rise" in text:
+    if "high" in text or "rise" in text or "tower" in text or "skyscraper" in text:
         return {"success": True, "project_type": project_type, "recommended_grade": "G40 – G45"}
+    if "column" in text or "beam" in text or "structural" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "G30 – G35"}
+    if "driveway" in text or "pavement" in text or "road" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "G25 – G30"}
+    if "wall" in text or "retaining" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "G30"}
+    if "bridge" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "G35 – G40"}
+    if "pool" in text or "swimming" in text or "tank" in text or "water" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "G30 (with waterproofing admixture)"}
+    if "drain" in text or "stormwater" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "AquaBuild (SKU17) pervious concrete"}
+    if "decorat" in text or "aesthetic" in text or "exposed" in text:
+        return {"success": True, "project_type": project_type, "recommended_grade": "DecoBuild (SKU18) or FairBuild (SKU23)"}
 
     return {
-        "success": False,
-        "error": "Unknown project_type. Try: house foundation, residential slabs, commercial slabs, industrial floors, high-rise structures.",
+        "success": True,
+        "project_type": project_type,
+        "recommended_grade": "G25 – G30 (general residential/structural)",
+        "note": "For more precise recommendation, specify the structural element (foundation, slab, beam, column).",
     }
 
 
