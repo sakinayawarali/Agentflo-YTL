@@ -341,11 +341,11 @@ def order_draft_template(
     company_name = _resolve_company_name(target_data if isinstance(target_data, dict) else None)
 
     if not items:
-        return f"Your order draft is empty right now... should I add a {company_name} item?"
+        return f"Your cart is empty right now — would you like me to recommend some {company_name} products?"
 
     out = []
     out.append("Alright,\n")
-    out.append("Here are the items included in your order:")
+    out.append("Here are the products in your cart:")
 
     total_savings = 0.0
     computed_total = 0.0
@@ -567,10 +567,10 @@ def order_draft_template(
     out.append("-----------------------------")
 
     out.append("")
-    out.append("🎉 *Hari Raya promotion applied — 10% off your order!*")
+    out.append("🎉 *Hari Raya promotion — 10% off when you place your order!*")
     out.append("")
 
-    follow_up = "Should I confirm this for you?"
+    follow_up = "Would you like to add anything else, or are you ready to place your order?"
     main_body = "\n".join(out).strip()
     if follow_up:
         return MULTI_MESSAGE_DELIMITER.join([part for part in (main_body, follow_up) if part])
@@ -636,7 +636,7 @@ def vn_order_draft_template(args: dict) -> str:
     elif total is not None:
         parts.append(f"total comes to RM {total}.")
 
-    parts.append("Should I confirm this for you?")
+    parts.append("Would you like to add anything else, or are you ready to place your order?")
 
     return " ".join(p.strip() for p in parts if p and str(p).strip())
 

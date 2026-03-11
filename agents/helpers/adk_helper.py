@@ -779,6 +779,10 @@ class ADKHelper:
             "kya yeh final order hai",
             "should i confirm this for you",
             "is this the final order",
+            "ready to place this order",
+            "ready to place your order",
+            "are you ready to place your order",
+            "would you like to place this order",
             "adakah ini pesanan akhir",
             "هل هذا هو الطلب النهائي",
             "这是最终订单吗",
@@ -786,6 +790,8 @@ class ADKHelper:
         if any(hint in t for hint in fixed_hints):
             return True
         if "haan / yes / confirm" in t or "yes / confirm" in t:
+            return True
+        if "place" in t and "order" in t and ("ready" in t or "confirm" in t or "final" in t):
             return True
         return ("confirm" in t and "order" in t and ("final" in t or "should i" in t))
 
