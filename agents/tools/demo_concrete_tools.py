@@ -64,21 +64,21 @@ def recommend_concrete_grade(project_type: str) -> Dict[str, Any]:
         return {"success": False, "error": "Missing project_type (e.g., house, foundation, slabs, commercial building)."}
 
     rules = [
-        ("house foundation", "G25 or G30"),
-        ("residential slabs", "G25"),
-        ("residential slab", "G25"),
-        ("commercial slabs", "G30 – G35"),
-        ("commercial slab", "G30 – G35"),
-        ("industrial floors", "G35 – G40"),
-        ("industrial floor", "G35 – G40"),
-        ("high-rise structures", "G40 – G45"),
-        ("high-rise", "G40 – G45"),
-        ("highrise", "G40 – G45"),
+        ("house foundation", "G25 or G30", "EcoBuild", "SKU16", "eco-friendly, 20-55% lower CO₂"),
+        ("residential slabs", "G25", "FibreBuild", "SKU26", "fibre reinforced, crack resistant"),
+        ("residential slab", "G25", "FibreBuild", "SKU26", "fibre reinforced, crack resistant"),
+        ("commercial slabs", "G30-G35", "FibreBuild", "SKU26", "fibre reinforced for commercial loads"),
+        ("commercial slab", "G30-G35", "FibreBuild", "SKU26", "fibre reinforced for commercial loads"),
+        ("industrial floors", "G35-G40", "FibreBuild", "SKU26", "enhanced tensile strength"),
+        ("industrial floor", "G35-G40", "FibreBuild", "SKU26", "enhanced tensile strength"),
+        ("high-rise structures", "G40-G45", "SuperBuild", "SKU20", "high compressive strength"),
+        ("high-rise", "G40-G45", "SuperBuild", "SKU20", "high compressive strength"),
+        ("highrise", "G40-G45", "SuperBuild", "SKU20", "high compressive strength"),
     ]
 
-    for key, grade in rules:
+    for key, grade, product, sku, benefit in rules:
         if key in text:
-            return {"success": True, "project_type": key, "recommended_grade": grade}
+            return {"success": True, "project_type": key, "product": product, "grade": grade, "sku": sku, "benefit": benefit}
 
     _whole_house_keywords = [
         "house", "unit house", "bungalow", "banglo", "semi-d", "semi d",
@@ -91,14 +91,20 @@ def recommend_concrete_grade(project_type: str) -> Dict[str, Any]:
             "success": True,
             "project_type": project_type,
             "is_whole_building": True,
-            "recommended_grades": {
-                "foundation": "G25 or G30",
-                "ground_slab": "G25 (or FibreBuild for crack resistance)",
-                "beams_columns": "G30",
-                "upper_floor_slabs": "G25 – G30",
-            },
-            "eco_option": "EcoBuild (SKU16) – eco-friendly with lower CO₂",
-            "note": "Ask customer which part they are pouring first, or provide a combined quote.",
+            "recommendations": [
+                {"item": "Foundation", "product": "EcoBuild", "grade": "G30", "sku": "SKU16", "benefit": "eco-friendly, 20-55% lower CO₂"},
+                {"item": "Columns & Beams", "product": "EcoBuild", "grade": "G30-G35", "sku": "SKU16", "benefit": "structural strength with lower carbon"},
+                {"item": "Ground Floor Slab", "product": "FibreBuild", "grade": "G25", "sku": "SKU26", "benefit": "fibre reinforced, crack resistant"},
+                {"item": "Upper Floor Slabs", "product": "EcoBuild", "grade": "G25-G30", "sku": "SKU16", "benefit": "eco-friendly structural concrete"},
+                {"item": "Bricklaying Mortar", "product": "Castle", "grade": "cement", "sku": "SKU01", "benefit": "Green Label certified, versatile"},
+                {"item": "Plastering", "product": "Walcrete", "grade": "plastering cement", "sku": "SKU03", "benefit": "air-entraining agent, excellent adhesion"},
+                {"item": "Skim Coat (Base)", "product": "Base Grey", "grade": "base coat", "sku": "SKU35", "benefit": "base coat before finish"},
+                {"item": "Skim Coat (Finish)", "product": "QuickSkim", "grade": "finish coat", "sku": "SKU37", "benefit": "smooth final finish"},
+                {"item": "Floor Screed", "product": "Floor Screed", "grade": "levelling", "sku": "SKU51", "benefit": "professional floor levelling"},
+                {"item": "Tiling", "product": "Tile Adhesive", "grade": "standard tiles", "sku": "SKU54", "benefit": "professional grade adhesive"},
+                {"item": "Driveway", "product": "DecoBuild", "grade": "decorative", "sku": "SKU18", "benefit": "stamped/exposed aggregate finishes"},
+            ],
+            "instruction": "Present each item with product name first, then send product cards for each SKU.",
         }
 
     _commercial_keywords = [
@@ -110,44 +116,52 @@ def recommend_concrete_grade(project_type: str) -> Dict[str, Any]:
             "success": True,
             "project_type": project_type,
             "is_whole_building": True,
-            "recommended_grades": {
-                "foundation": "G30 – G35",
-                "slabs": "G30 – G35",
-                "beams_columns": "G35",
-            },
-            "eco_option": "SuperBuild (SKU20) – high compressive strength",
+            "recommendations": [
+                {"item": "Foundation", "product": "SuperBuild", "grade": "G35", "sku": "SKU20", "benefit": "high compressive strength"},
+                {"item": "Slabs", "product": "FibreBuild", "grade": "G30-G35", "sku": "SKU26", "benefit": "fibre reinforced, crack resistant"},
+                {"item": "Columns & Beams", "product": "SuperBuild", "grade": "G35", "sku": "SKU20", "benefit": "heavy structural loads"},
+                {"item": "Industrial Floors", "product": "FibreBuild", "grade": "G35-G40", "sku": "SKU26", "benefit": "enhanced tensile strength"},
+                {"item": "Bricklaying Mortar", "product": "Castle", "grade": "cement", "sku": "SKU01", "benefit": "Green Label certified"},
+                {"item": "Plastering", "product": "Walcrete", "grade": "plastering cement", "sku": "SKU03", "benefit": "air-entraining agent"},
+                {"item": "Floor Screed", "product": "Floor Screed", "grade": "levelling", "sku": "SKU51", "benefit": "professional floor levelling"},
+                {"item": "Tiling", "product": "SuperBond", "grade": "large format", "sku": "SKU52", "benefit": "heavy-duty for commercial spaces"},
+            ],
+            "instruction": "Present each item with product name first, then send product cards for each SKU.",
         }
 
     if "foundation" in text or "footing" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G25 or G30"}
+        return {"success": True, "project_type": project_type, "product": "EcoBuild", "grade": "G25 or G30", "sku": "SKU16", "benefit": "eco-friendly, 20-55% lower CO₂"}
     if "slab" in text and "commercial" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G30 – G35"}
+        return {"success": True, "project_type": project_type, "product": "FibreBuild", "grade": "G30-G35", "sku": "SKU26", "benefit": "fibre reinforced, crack resistant"}
     if "slab" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G25"}
+        return {"success": True, "project_type": project_type, "product": "FibreBuild", "grade": "G25", "sku": "SKU26", "benefit": "fibre reinforced, crack resistant"}
     if "industrial" in text or "floor" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G35 – G40"}
+        return {"success": True, "project_type": project_type, "product": "FibreBuild", "grade": "G35-G40", "sku": "SKU26", "benefit": "enhanced tensile strength for heavy loads"}
     if "high" in text or "rise" in text or "tower" in text or "skyscraper" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G40 – G45"}
+        return {"success": True, "project_type": project_type, "product": "SuperBuild", "grade": "G40-G45", "sku": "SKU20", "benefit": "high compressive strength"}
     if "column" in text or "beam" in text or "structural" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G30 – G35"}
+        return {"success": True, "project_type": project_type, "product": "EcoBuild", "grade": "G30-G35", "sku": "SKU16", "benefit": "eco-friendly structural concrete"}
     if "driveway" in text or "pavement" in text or "road" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G25 – G30"}
+        return {"success": True, "project_type": project_type, "product": "DecoBuild", "grade": "G25-G30", "sku": "SKU18", "benefit": "decorative concrete finishes"}
     if "wall" in text or "retaining" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G30"}
+        return {"success": True, "project_type": project_type, "product": "EcoBuild", "grade": "G30", "sku": "SKU16", "benefit": "eco-friendly retaining wall concrete"}
     if "bridge" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G35 – G40"}
+        return {"success": True, "project_type": project_type, "product": "SuperBuild", "grade": "G35-G40", "sku": "SKU20", "benefit": "high-performance structural concrete"}
     if "pool" in text or "swimming" in text or "tank" in text or "water" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "G30 (with waterproofing admixture)"}
+        return {"success": True, "project_type": project_type, "product": "AquaBuild", "grade": "G30", "sku": "SKU17", "benefit": "waterproof pervious concrete"}
     if "drain" in text or "stormwater" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "AquaBuild (SKU17) pervious concrete"}
+        return {"success": True, "project_type": project_type, "product": "AquaBuild", "grade": "pervious", "sku": "SKU17", "benefit": "allows stormwater to percolate, meets SUDS requirements"}
     if "decorat" in text or "aesthetic" in text or "exposed" in text:
-        return {"success": True, "project_type": project_type, "recommended_grade": "DecoBuild (SKU18) or FairBuild (SKU23)"}
+        return {"success": True, "project_type": project_type, "product": "DecoBuild or FairBuild", "grade": "decorative", "sku": "SKU18", "alt_sku": "SKU23", "benefit": "stamped/exposed aggregate or refined off-form finish"}
 
     return {
         "success": True,
         "project_type": project_type,
-        "recommended_grade": "G25 – G30 (general residential/structural)",
-        "note": "For more precise recommendation, specify the structural element (foundation, slab, beam, column).",
+        "product": "EcoBuild",
+        "grade": "G25-G30",
+        "sku": "SKU16",
+        "benefit": "eco-friendly general purpose concrete",
+        "note": "For a more precise recommendation, specify the structural element (foundation, slab, beam, column).",
     }
 
 

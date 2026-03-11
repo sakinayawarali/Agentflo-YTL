@@ -3261,9 +3261,9 @@ class RouteHandler:
                                 "I've already synced the cart with the items below.\n"
                                 f"Selected items:\n{items_summary_text}\n"
                                 "Instructions: Do NOT greet or re-introduce yourself. "
-                                "1. You MUST explicitly list the items and quantities added to the cart from the list above. "
-                                "2. Ask if they want to proceed to checkout. "
-                                "If they want to place the order, use confirmOrderDraftTool to send the confirmation interface. "
+                                "1. List the items and quantities added to the cart. "
+                                "2. Ask if they'd like to add anything else or if they're ready to place the order. "
+                                "3. Do NOT confirm the order yet — let them add more products or upsell first. "
                                 "Keep it to one short WhatsApp-style message."
                             )
 
@@ -3421,15 +3421,13 @@ class RouteHandler:
 
                             # Map button IDs to synthetic text
                             if button_id == "ORDER_CONFIRM_YES":
-                                # Treat as an explicit confirmation in English so the agent continues in English only.
-                                synthetic_text = "yes, please confirm and place this order"
-                                # YTL: after explicit order confirmation, prompt for address + site location pin via interactive message.
+                                synthetic_text = "yes, I'm ready — please place this order now"
                                 try:
                                     self._send_location_request(user_id, replied_to_id)
                                 except Exception as e:
                                     logger.warning("wa.location_request.trigger_failed", user_id=user_id, error=str(e))
                             elif button_id == "ORDER_CONFIRM_NO":
-                                synthetic_text = "no, this order is not final yet, I want to change the items"
+                                synthetic_text = "no, I want to make some changes to my cart first"
                             else:
                                 synthetic_text = button_title or "button press"
 

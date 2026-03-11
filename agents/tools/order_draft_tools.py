@@ -2431,6 +2431,140 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
     logger.info("catalog.send.ok", user_id=user_id, catalog_id=str(catalog_id))
     _sessions.mark_catalog_sent(user_id, session_id)
     return ""
+
+
+# ---------------------------------------------------------------------------
+# Single Product Message (SPM) — WhatsApp interactive product card
+# ---------------------------------------------------------------------------
+
+_SPM_PRODUCT_CACHE: dict = {}
+
+def _load_spm_product_cache() -> dict:
+    """Load products.json into a SKU→product lookup dict (cached)."""
+    global _SPM_PRODUCT_CACHE
+    if _SPM_PRODUCT_CACHE:
+        return _SPM_PRODUCT_CACHE
+    try:
+        products_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "data", "products.json"
+        )
+        if os.path.exists(products_path):
+            with open(products_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for p in data.get("products", []):
+                sku = (p.get("sku_code") or p.get("sku") or "").strip().upper()
+                if sku:
+                    _SPM_PRODUCT_CACHE[sku] = p
+    except Exception as e:
+        logger.warning("spm.product_cache.load_failed", error=str(e))
+    return _SPM_PRODUCT_CACHE
+
+
+def send_single_product_message(user_id: str, sku_code: str, body_text: str = "") -> str:
+    """
+    Send a WhatsApp Single Product Message (SPM) card for a specific SKU.
+    Shows product image, name, price, and description from the Meta catalog.
+    User can tap 'View' to see full details and add to cart.
+
+    Args:
+        user_id: WhatsApp phone number of the recipient.
+        sku_code: The product SKU ID (e.g., 'SKU01', 'SKU16').
+        body_text: Optional message body text to display above the product card.
+    """
+    phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID") or WA_PHONE_NUMBER_ID
+    token = os.getenv("WHATSAPP_ACCESS_TOKEN") or WA_ACCESS_TOKEN
+    catalog_id = (
+        os.getenv("WHATSAPP_CATALOG_ID")
+        or os.getenv("ENGRO_CATALOG_ID")
+        or os.getenv("CATALOG_ID")
+        or "1381891263693403"
+    )
+
+    if not (phone_id and token and catalog_id):
+        logger.warning("spm.send.skip_missing_creds", user_id=user_id)
+        return "Could not send product card — missing credentials."
+
+    sku_upper = sku_code.strip().upper()
+    product_cache = _load_spm_product_cache()
+    product = product_cache.get(sku_upper)
+    product_name = ""
+    if product:
+        product_name = product.get("product_name") or product.get("name") or sku_code
+    if not body_text:
+        if product_name:
+            body_text = f"Here's {product_name} from our catalog — tap 'View' to see details and add to your order."
+        else:
+            body_text = "Tap 'View' to see product details and add to your order."
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": str(user_id),
+        "type": "interactive",
+        "interactive": {
+            "type": "product",
+            "body": {"text": body_text[:1024]},
+            "action": {
+                "catalog_id": str(catalog_id),
+                "product_retailer_id": sku_upper,
+            },
+        },
+    }
+
+    url = f"{WHATSAPP_API_URL}/{phone_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=15)
+        if 200 <= resp.status_code < 300:
+            logger.info("spm.send.ok", user_id=user_id, sku=sku_upper)
+            return ""
+        err_body = (resp.text or "")[:400]
+        logger.error(
+            "spm.send.failed",
+            user_id=user_id,
+            sku=sku_upper,
+            status=resp.status_code,
+            body=err_body,
+        )
+        return f"Product card send failed (HTTP {resp.status_code})."
+    except Exception as e:
+        logger.error("spm.send.error", user_id=user_id, sku=sku_upper, error=str(e))
+        return f"Product card send error: {str(e)}"
+
+
+def send_single_product_card(user_id: str, sku_code: str, body_text: str = "") -> str:
+    """
+    Send a WhatsApp product card for a specific YTL Cement product.
+    The card shows the product image, name, price, and description from the catalog.
+    The customer can tap 'View' to see full details and add directly to their cart.
+
+    Call this tool AFTER recommending a specific product to the customer.
+    For example, after saying 'I recommend Castle cement for your project',
+    call this tool with sku_code='SKU01' to send the Castle product card.
+
+    Common SKUs:
+    - Castle (SKU01), Phoenix (SKU02), Walcrete (SKU03), Wallcem (SKU04)
+    - EcoBuild (SKU16), AquaBuild (SKU17), DecoBuild (SKU18)
+    - FlowBuild Pro (SKU19), SuperBuild (SKU20), CoolBuild (SKU21)
+    - FairBuild (SKU23), RapidBuild (SKU24), FlexBuild (SKU25), FibreBuild (SKU26)
+    - QuickRender (SKU41), QuickSkim (SKU37), Floor Screed (SKU51)
+    - Tile Adhesive (SKU54), SuperBond (SKU52), ECOSand (SKU28)
+
+    Args:
+        user_id: The customer's WhatsApp number (automatically provided).
+        sku_code: The product SKU code (e.g., 'SKU01', 'SKU16').
+        body_text: Optional short message to show above the product card.
+
+    Returns:
+        Empty string on success.
+    """
+    return send_single_product_message(user_id, sku_code, body_text)
+
+
 class SendCatalogueInput(BaseModel):
     """No extra fields; user_id is injected from runtime."""
     pass
@@ -2774,9 +2908,8 @@ def send_order_confirmation_buttons(user_id: str) -> str:
     if not WHATSAPP_PHONE_NUMBER_ID or not WHATSAPP_ACCESS_TOKEN:
         logger.error("confirm_template.missing_creds", user_id=user_id)
         return (
-            "bhai, confirmation buttons bhejne mein issue aa gaya hai "
-            "(credentials missing). aap simple 'haan' ya 'nahi' likh kar "
-            "bhi reply kar sakte hain."
+            "I'm having trouble sending the confirmation buttons. "
+            "You can simply reply 'yes' or 'no' to confirm or edit your order."
         )
 
     # 1) Get draft
@@ -2785,14 +2918,14 @@ def send_order_confirmation_buttons(user_id: str) -> str:
     except Exception as e:
         logger.error("confirm_template.draft_read_error", user_id=user_id, error=str(e))
         return (
-            "mujhe aapka current cart read karne mein issue aa gaya hai. "
-            "thori der baad phir try karein ya items dobara bhej dein."
+            "I had trouble reading your cart. "
+            "Please try again in a moment or re-add the items."
         )
 
     if not draft_data:
         return (
-            "bhai, abhi aapke cart mein koi items nahi hain. "
-            "pehlay products add kar lein, phir main order place karne mein madad karungi."
+            "Your cart is empty right now. "
+            "Add some products first, then I'll help you place the order."
         )
 
     try:
@@ -2800,22 +2933,22 @@ def send_order_confirmation_buttons(user_id: str) -> str:
     except Exception as e:
         logger.error("confirm_template.draft_validation_error", user_id=user_id, error=str(e))
         return (
-            "mujhe aapke cart ka data theek se samajh nahi aa raha hai. "
-            "ek dafa items dobara share kar dein ya thora sa adjust kar ke bhej dein."
+            "I had trouble reading your cart data. "
+            "Please try re-adding your items."
         )
 
     if not draft.items:
         return (
-            "bhai, abhi aapke cart mein koi items nahi hain. "
-            "pehlay kuch products add karein, phir main order place karungi."
+            "Your cart is empty right now. "
+            "Add some products first, then I'll help you place the order."
         )
 
     summary_text = _render_order_draft_template_summary(draft.model_dump())
 
     body_text = (
-        "theek hai, aapke cart mein yeh items hain:\n\n"
+        "Here's your final order:\n\n"
         f"{summary_text}\n\n"
-        "kya yehi final order hai?"
+        "Ready to place this order?"
     )
 
     url = f"https://graph.facebook.com/v23.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
@@ -2830,7 +2963,7 @@ def send_order_confirmation_buttons(user_id: str) -> str:
         "interactive": {
             "type": "button",
             "body": {"text": body_text},
-            "footer": {"text": "YES se confirm, NO se edit kar sakte hain."},
+            "footer": {"text": "Tap YES to place order, NO to make changes."},
             "action": {
                 "buttons": [
                     {
