@@ -13,6 +13,45 @@ from utils.logging import logger, debug_enabled
 
 _DEFAULT_COMPANY_NAME = "YTL Cement"
 
+_SKU_NAME_MAP: dict = {}
+
+def _get_sku_name_map() -> dict:
+    """Load SKU→name mapping from products.json (cached after first call)."""
+    global _SKU_NAME_MAP
+    if _SKU_NAME_MAP:
+        return _SKU_NAME_MAP
+    try:
+        import json
+        products_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "data", "products.json"
+        )
+        products_path = os.path.abspath(products_path)
+        if os.path.exists(products_path):
+            with open(products_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for p in data.get("products", []):
+                sku = (p.get("sku_code") or p.get("sku") or p.get("product_retailer_id") or "").strip()
+                name = (p.get("product_name") or p.get("name") or "").strip()
+                if sku and name:
+                    _SKU_NAME_MAP[sku.upper()] = name
+    except Exception as e:
+        logger.warning("sku_name_map.load_failed", error=str(e))
+    return _SKU_NAME_MAP
+
+
+def _resolve_sku_name(raw_name: str) -> str:
+    """If the name looks like a bare SKU ID, resolve it to the actual product name."""
+    import re
+    if not raw_name or not isinstance(raw_name, str):
+        return raw_name or "item"
+    stripped = raw_name.strip()
+    if re.match(r"^SKU\s*\d+$", stripped, re.IGNORECASE):
+        sku_map = _get_sku_name_map()
+        resolved = sku_map.get(stripped.upper().replace(" ", ""))
+        if resolved:
+            return f"{resolved} ({stripped})"
+    return stripped
+
 
 def _resolve_company_name(args: Optional[dict] = None) -> str:
     if isinstance(args, dict):
@@ -312,7 +351,7 @@ def order_draft_template(
     computed_total = 0.0
 
     for idx, item in enumerate(items, 1):
-        name = item.get("name", "item")
+        name = _resolve_sku_name(item.get("name") or item.get("sku_code") or item.get("product_retailer_id") or "item")
         qty = item.get("qty") or item.get("quantity") or 0
 
         # Extract details
@@ -508,32 +547,27 @@ def order_draft_template(
     # elif margin_pct is not None:
     #     out.append(f"Approx margin on this order is ~{margin_pct:.1f}%. ")
 
-    if show_breakdown:
-        out.append("-----------------------------")
-        if subtotal_breakdown is not None:
-            out.append(f"Subtotal: Rs {subtotal_breakdown:,.2f}")
-        if discount_breakdown is not None:
-            out.append(f"Total Discount: Rs {discount_breakdown:,.2f}")
-        # if total_breakdown is not None:
-        #     out.append(f"Total:          Rs {total_breakdown:,.2f}")
-        if grand_total_breakdown is not None:
-            out.append("Grand Total (incl. GST):")
-            out.append(f"Rs {grand_total_breakdown:,.2f}")
-        # if profit_breakdown is not None:
-        #     out.append(f"Profit:         Rs {profit_breakdown:,.2f}")
-        # # if profit_total_breakdown is not None:
-        # #     out.append(f"Profit Total:   Rs {profit_total_breakdown:,.2f}")
-        # margin_display = (
-        #     profit_margin_pct_breakdown
-        #     if profit_margin_pct_breakdown is not None
-        #     else profit_margin_breakdown
-        # )
-        # if margin_display is not None:
-        #     out.append(f"Profit Margin:  {margin_display:.2f}%")
-        out.append("-----------------------------")
+    # Compute order subtotal from line items if not provided by the API
+    display_subtotal = subtotal_breakdown or grand_total_breakdown or total_val
+    if display_subtotal is None and computed_total > 0:
+        display_subtotal = computed_total
+
+    # Apply 10% Hari Raya promo discount
+    HARI_RAYA_DISCOUNT_PCT = 0.10
+    hari_raya_savings = round(display_subtotal * HARI_RAYA_DISCOUNT_PCT, 2) if display_subtotal else 0.0
+    after_discount = round(display_subtotal - hari_raya_savings, 2) if display_subtotal else None
+
+    out.append("-----------------------------")
+    if display_subtotal is not None:
+        out.append(f"Subtotal: RM {display_subtotal:,.2f}")
+    if hari_raya_savings > 0:
+        out.append(f"Hari Raya Promo (10% off): −RM {hari_raya_savings:,.2f}")
+    if after_discount is not None:
+        out.append(f"*Total: RM {after_discount:,.2f}*")
+    out.append("-----------------------------")
 
     out.append("")
-    out.append("Confirm now and get *10% off* with our *Hari Raya promotion*.")
+    out.append("🎉 *Hari Raya promotion applied — 10% off your order!*")
     out.append("")
 
     follow_up = "Should I confirm this for you?"
@@ -570,34 +604,38 @@ def vn_order_draft_template(args: dict) -> str:
 
     parts.append("your order includes these items,")
 
+    vn_subtotal = 0.0
     for line in lines:
-        name = line.get("name", "item")
+        name = _resolve_sku_name(line.get("name") or line.get("sku_code") or line.get("product_retailer_id") or "item")
         qty = line.get("qty", 0)
         line_total = line.get("line_total")
         qty_str = str(qty)
-        unit_word = "boxes"
+        unit_word = "units"
 
         if line_total is not None:
-            parts.append(f"{name}, total {qty_str} {unit_word}, {line_total} rupees")
+            parts.append(f"{name}, {qty_str} {unit_word}, RM {line_total}")
+            try:
+                vn_subtotal += float(line_total)
+            except (TypeError, ValueError):
+                pass
         else:
-            parts.append(f"{name}, total {qty_str} {unit_word}")
+            parts.append(f"{name}, {qty_str} {unit_word}")
 
     if total is not None:
-        parts.append(f"total comes to {total} rupees.")
+        try:
+            vn_subtotal = float(total)
+        except (TypeError, ValueError):
+            pass
 
-    # Profit line for VN
-    total_sell, profit, margin_pct = _compute_profit_fields(draft, total_key="total_amount")
-    if total_sell is None:
-        total_sell, profit, margin_pct = _compute_profit_fields(draft, total_key="total")
-    if total_sell is not None and profit is not None:
-        parts.append(
-            f"Selling all of this, your total sale will be {total_sell} rupees, "
-            f"and your profit will be about {profit} rupees."
-        )
-    else:
-        parts.append("Your profit should be good, InshaAllah.")
+    if vn_subtotal > 0:
+        vn_discount = round(vn_subtotal * 0.10, 2)
+        vn_after = round(vn_subtotal - vn_discount, 2)
+        parts.append(f"subtotal is RM {vn_subtotal:,.2f}.")
+        parts.append(f"With our Hari Raya 10% promotion, you save RM {vn_discount:,.2f}.")
+        parts.append(f"Your total comes to RM {vn_after:,.2f}.")
+    elif total is not None:
+        parts.append(f"total comes to RM {total}.")
 
-    parts.append("Confirm now for 10% off with our Hari Raya promotion.")
     parts.append("Should I confirm this for you?")
 
     return " ".join(p.strip() for p in parts if p and str(p).strip())
