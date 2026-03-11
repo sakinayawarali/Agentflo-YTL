@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from agents.tools.pricing_data import PRICES
+from agents.tools.pricing_data import PRICES, ALL_CONCRETE_PRICES
 
 
 MIN_ORDER_M3 = 5.0
@@ -40,28 +40,29 @@ def _apply_discount(value: float, pct: float) -> float:
 
 def estimate_concrete_price(grade: str, volume: float) -> Dict[str, Any]:
     """
-    Estimate concrete cost.
+    Estimate concrete cost. Accepts a concrete grade (G25, G30) or
+    an ECOConcrete product name (EcoBuild, FibreBuild, etc.).
     """
     grade_key = _normalize_grade(grade)
     if not grade_key:
         return {
             "success": False,
-            "error": "Missing grade (expected e.g. G25, G30).",
-            "supported_grades": sorted(PRICES.keys()),
+            "error": "Missing grade or product name (expected e.g. G25, G30, EcoBuild).",
+            "supported": sorted(ALL_CONCRETE_PRICES.keys()),
         }
 
-    if grade_key not in PRICES:
+    if grade_key not in ALL_CONCRETE_PRICES:
         return {
             "success": False,
-            "error": f"Unsupported grade: {grade_key}",
-            "supported_grades": sorted(PRICES.keys()),
+            "error": f"Unsupported grade/product: {grade_key}",
+            "supported": sorted(ALL_CONCRETE_PRICES.keys()),
         }
 
     vol = _parse_positive_volume(volume)
     if vol is None:
         return {"success": False, "error": "Volume must be a number greater than 0."}
 
-    min_price, max_price = PRICES[grade_key]
+    min_price, max_price = ALL_CONCRETE_PRICES[grade_key]
     est_range: List[float] = [round(min_price * vol, 2), round(max_price * vol, 2)]
 
     discount_pct = _volume_discount_pct(vol)
@@ -86,18 +87,19 @@ def estimate_concrete_price(grade: str, volume: float) -> Dict[str, Any]:
 
 
 def generate_quote(grade: str, volume: float, location: str) -> Dict[str, Any]:
+    """Generate a structured quote. Accepts grade (G25) or product name (EcoBuild)."""
     grade_key = _normalize_grade(grade)
     if not grade_key:
         return {
             "success": False,
-            "error": "Missing grade (expected e.g. G25, G30).",
-            "supported_grades": sorted(PRICES.keys()),
+            "error": "Missing grade or product name (expected e.g. G25, G30, EcoBuild).",
+            "supported": sorted(ALL_CONCRETE_PRICES.keys()),
         }
-    if grade_key not in PRICES:
+    if grade_key not in ALL_CONCRETE_PRICES:
         return {
             "success": False,
-            "error": f"Unsupported grade: {grade_key}",
-            "supported_grades": sorted(PRICES.keys()),
+            "error": f"Unsupported grade/product: {grade_key}",
+            "supported": sorted(ALL_CONCRETE_PRICES.keys()),
         }
 
     vol = _parse_positive_volume(volume)
@@ -108,7 +110,7 @@ def generate_quote(grade: str, volume: float, location: str) -> Dict[str, Any]:
     if not loc:
         return {"success": False, "error": "Missing project location."}
 
-    min_price, max_price = PRICES[grade_key]
+    min_price, max_price = ALL_CONCRETE_PRICES[grade_key]
     discount_pct = _volume_discount_pct(vol)
     min_cost = round(vol * min_price, 2)
     max_cost = round(vol * max_price, 2)
