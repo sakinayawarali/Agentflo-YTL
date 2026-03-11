@@ -2247,6 +2247,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
     }
 
     # WhatsApp Cloud API: interactive multi-product list (grouped sections).
+    # Max 30 product items, max 10 sections per message.
     payload = {
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
@@ -2256,10 +2257,10 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
             "type": "product_list",
             "header": {
                 "type": "text",
-                "text": "YTL Cement Catalog",
+                "text": "YTL Cement Product Catalog",
             },
             "body": {
-                "text": "Here's our full range of products.",
+                "text": "Browse our full range — cement, concrete, drymix, aggregates & more.",
             },
             "footer": {
                 "text": "Tap a section to see products.",
@@ -2268,30 +2269,63 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
                 "catalog_id": str(catalog_id),
                 "sections": [
                     {
-                        "title": "ECOCem – Cement",
+                        "title": "ECOCem™ – Bag Cement",
                         "product_items": [
-                            {"product_retailer_id": "1"},
-                            {"product_retailer_id": "2"},
-                            {"product_retailer_id": "3"},
-                            {"product_retailer_id": "4"},
-                            {"product_retailer_id": "5"},
+                            {"product_retailer_id": "SKU01"},
+                            {"product_retailer_id": "SKU02"},
+                            {"product_retailer_id": "SKU03"},
+                            {"product_retailer_id": "SKU04"},
+                            {"product_retailer_id": "SKU05"},
+                            {"product_retailer_id": "SKU06"},
+                            {"product_retailer_id": "SKU07"},
                         ],
                     },
                     {
-                        "title": "ECODrymix – Mortars",
+                        "title": "Bulk Cement",
                         "product_items": [
-                            {"product_retailer_id": "6"},
-                            {"product_retailer_id": "7"},
-                            {"product_retailer_id": "8"},
-                            {"product_retailer_id": "9"},
-                            {"product_retailer_id": "10"},
+                            {"product_retailer_id": "SKU08"},
+                            {"product_retailer_id": "SKU09"},
+                            {"product_retailer_id": "SKU10"},
+                            {"product_retailer_id": "SKU11"},
+                            {"product_retailer_id": "SKU12"},
                         ],
                     },
                     {
-                        "title": "ECOConcrete – Systems",
+                        "title": "ECOConcrete™ – Ready-Mix",
                         "product_items": [
-                            {"product_retailer_id": "11"},
-                            {"product_retailer_id": "12"},
+                            {"product_retailer_id": "SKU16"},
+                            {"product_retailer_id": "SKU19"},
+                            {"product_retailer_id": "SKU20"},
+                            {"product_retailer_id": "SKU21"},
+                            {"product_retailer_id": "SKU26"},
+                            {"product_retailer_id": "SKU17"},
+                            {"product_retailer_id": "SKU18"},
+                        ],
+                    },
+                    {
+                        "title": "ECODrymix™ – Renders",
+                        "product_items": [
+                            {"product_retailer_id": "SKU35"},
+                            {"product_retailer_id": "SKU37"},
+                            {"product_retailer_id": "SKU39"},
+                            {"product_retailer_id": "SKU41"},
+                        ],
+                    },
+                    {
+                        "title": "ECODrymix™ – Tile & Floor",
+                        "product_items": [
+                            {"product_retailer_id": "SKU51"},
+                            {"product_retailer_id": "SKU52"},
+                            {"product_retailer_id": "SKU54"},
+                            {"product_retailer_id": "SKU56"},
+                        ],
+                    },
+                    {
+                        "title": "Aggregates & Sand",
+                        "product_items": [
+                            {"product_retailer_id": "SKU28"},
+                            {"product_retailer_id": "SKU29"},
+                            {"product_retailer_id": "SKU31"},
                         ],
                     },
                 ],
@@ -2335,6 +2369,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
         # If the thumbnail_product_retailer_id is wrong / not present in the connected FB catalog,
         # WhatsApp returns 131009 with details like "Products not found in FB Catalog".
         # In that case retry once WITHOUT a thumbnail so WhatsApp can pick a default.
+        thumb_id = None
         if (
             resp.status_code == 400
             and thumb_id
