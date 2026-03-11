@@ -2269,7 +2269,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
                 "catalog_id": str(catalog_id),
                 "sections": [
                     {
-                        "title": "ECOCem™ – Bag Cement",
+                        "title": "ECOCem Bag Cement",
                         "product_items": [
                             {"product_retailer_id": "SKU01"},
                             {"product_retailer_id": "SKU02"},
@@ -2291,7 +2291,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
                         ],
                     },
                     {
-                        "title": "ECOConcrete™ – Ready-Mix",
+                        "title": "ECOConcrete Ready-Mix",
                         "product_items": [
                             {"product_retailer_id": "SKU16"},
                             {"product_retailer_id": "SKU19"},
@@ -2303,7 +2303,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
                         ],
                     },
                     {
-                        "title": "ECODrymix™ – Renders",
+                        "title": "ECODrymix Renders",
                         "product_items": [
                             {"product_retailer_id": "SKU35"},
                             {"product_retailer_id": "SKU37"},
@@ -2312,7 +2312,7 @@ def send_product_catalogue(user_id: str, session_id: Optional[str] = None) -> st
                         ],
                     },
                     {
-                        "title": "ECODrymix™ – Tile & Floor",
+                        "title": "ECODrymix Tile & Floor",
                         "product_items": [
                             {"product_retailer_id": "SKU51"},
                             {"product_retailer_id": "SKU52"},
