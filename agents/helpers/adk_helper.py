@@ -1735,6 +1735,12 @@ class ADKHelper:
             return []
 
         messages = _coerce_messages(agent_text)
+        # Detect [SEND_LOCATION_PIN] tag before stripping — triggers location button
+        _raw_text = " ".join(messages)
+        _needs_location_pin = bool(re.search(r"\[SEND_LOCATION_PIN\]", _raw_text))
+        # Strip the internal tag so the user never sees it
+        messages = [re.sub(r"\s*\[SEND_LOCATION_PIN\]\s*", "", m).strip() for m in messages]
+        messages = [m for m in messages if m]
         combined_text = "\n\n".join(messages).strip() if messages else (agent_text.strip() if isinstance(agent_text, str) else "")
 
         # 1) send agent TEXT (must be first; support multiple parts)
@@ -1759,6 +1765,42 @@ class ADKHelper:
                 part_count=len(messages or ([combined_text] if combined_text else [])),
             )
             return combined_text or agent_text
+        # If agent included [SEND_LOCATION_PIN], fire the interactive location button now
+        if _needs_location_pin:
+            try:
+                from agents.helpers.route_handlers import WebhookRouter
+                tenant = (os.getenv("TENANT_ID") or "").strip().lower()
+                if tenant == "ytl":
+                    _loc_payload = {
+                        "messaging_product": "whatsapp",
+                        "to": user_id,
+                        "type": "interactive",
+                        "interactive": {
+                            "type": "location_request_message",
+                            "body": {"text": "Tap the button to share your site location."},
+                            "action": {"name": "send_location"},
+                        },
+                    }
+                    _wa_url = os.getenv("WA_GRAPH_URL") or ""
+                    _wa_token = os.getenv("WA_ACCESS_TOKEN") or ""
+                    if _wa_url and _wa_token:
+                        _loc_resp = requests.post(
+                            _wa_url,
+                            headers={"Authorization": f"Bearer {_wa_token}", "Content-Type": "application/json"},
+                            json=_loc_payload,
+                            timeout=15,
+                        )
+                        if 200 <= _loc_resp.status_code < 300:
+                            logger.info("wa.location_pin.sent_via_tag", user_id=user_id)
+                            try:
+                                self.session_helper.mark_location_request_sent(user_id)
+                            except Exception:
+                                pass
+                        else:
+                            logger.warning("wa.location_pin.fail", user_id=user_id, status=_loc_resp.status_code)
+            except Exception as e:
+                logger.warning("wa.location_pin.tag_trigger_error", user_id=user_id, error=str(e))
+
         # Prepare VN script separately so we never mutate the text reply
         vn_script = combined_text or agent_text
 
