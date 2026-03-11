@@ -3032,15 +3032,34 @@ class RouteHandler:
                         except Exception:
                             pass
 
-                        # Resolve product names from the Meta catalog by product_retailer_id.
-                        # Native WA orders carry only retailer_id + qty + price — no names.
+                        # Resolve product names: local products.json first, then Meta catalog API.
                         _resolved_names: dict = {}
+                        import re as _re
+                        _PLACEHOLDER_NAME_RE = _re.compile(r"^(SKU\s*[\w/-]+|Catalog Item \d+)$", _re.IGNORECASE)
+
+                        # 1) Local products.json lookup (fast, always available)
+                        try:
+                            import json as _json
+                            _products_path = os.path.join(
+                                os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "products.json"
+                            )
+                            if os.path.exists(_products_path):
+                                with open(_products_path, "r", encoding="utf-8") as _f:
+                                    _local_products = _json.load(_f).get("products", [])
+                                for _p in _local_products:
+                                    _sku = (_p.get("sku_code") or _p.get("sku") or "").strip().upper()
+                                    _pname = (_p.get("product_name") or "").strip()
+                                    _fullname = (_p.get("name") or "").strip()
+                                    if _sku and (_pname or _fullname):
+                                        _resolved_names[_sku] = _fullname or _pname
+                                logger.info("webhook.order.local_names_loaded", count=len(_resolved_names))
+                        except Exception as _e:
+                            logger.warning("webhook.order.local_names_failed", error=str(_e))
+
+                        # 2) Meta catalog API lookup (supplement for any remaining unknowns)
                         try:
                             from agents.tools.catalog_search import lookup_names_by_retailer_ids
                             _ids_to_resolve = []
-                            
-                            import re as _re
-                            _PLACEHOLDER_NAME_RE = _re.compile(r"^(SKU\s*[\w/-]+|Catalog Item \d+)$", _re.IGNORECASE)
 
                             for _it in order_items:
                                 _rid = _get_val(_it, "product_retailer_id") or _get_val(_it, "sku_code")
@@ -3049,25 +3068,24 @@ class RouteHandler:
                                     not _existing_name
                                     or _PLACEHOLDER_NAME_RE.match(str(_existing_name).strip())
                                 )
-                                if _rid and _is_placeholder:
+                                _rid_upper = str(_rid).strip().upper() if _rid else ""
+                                if _rid and _is_placeholder and _rid_upper not in _resolved_names:
                                     _ids_to_resolve.append(str(_rid).strip())
                             if _ids_to_resolve:
                                 _catalog_id_from_order = str(order_payload.get("catalog_id") or "").strip() or None
-                                _resolved_names = lookup_names_by_retailer_ids(
+                                _meta_names = lookup_names_by_retailer_ids(
                                     _ids_to_resolve,
                                     catalog_id_override=_catalog_id_from_order,
                                 )
+                                _resolved_names.update(_meta_names)
                                 logger.info(
                                     "webhook.order.names_resolved",
                                     user_id=user_id,
                                     requested=_ids_to_resolve,
-                                    resolved=_resolved_names,
+                                    meta_resolved=_meta_names,
                                 )
-
-                            
-                            
                         except Exception as _e:
-                            logger.warning("webhook.order.name_lookup_failed", user_id=user_id, error=str(_e))
+                            logger.warning("webhook.order.meta_name_lookup_failed", user_id=user_id, error=str(_e))
 
                         for item in order_items:
                             sku_code = _get_val(item, "sku_code")
@@ -3088,8 +3106,6 @@ class RouteHandler:
                                 "merge_strategy": "INCREMENT",
                             }
                             _rid_key = str(_get_val(item, "product_retailer_id") or sku_code).strip()
-                            # Use name from the order payload, or catalog lookup, or sku_code itself.
-                            # We store whatever we can find — the display layer handles fallbacks.
                             _raw_name = _get_val(item, "name")
                             _name_is_placeholder = (
                                 not _raw_name
@@ -3098,6 +3114,8 @@ class RouteHandler:
                             name_val = (
                                 (None if _name_is_placeholder else _raw_name)
                                 or _resolved_names.get(_rid_key)
+                                or _resolved_names.get(_rid_key.upper())
+                                or _resolved_names.get(sku_code.upper() if sku_code else "")
                                 or sku_code
                             )
                             if name_val:
