@@ -86,8 +86,9 @@ def estimate_concrete_price(grade: str, volume: float) -> Dict[str, Any]:
     }
 
 
-def generate_quote(grade: str, volume: float, location: str) -> Dict[str, Any]:
-    """Generate a structured quote. Accepts grade (G25) or product name (EcoBuild)."""
+def generate_quote(grade: str, volume: float, location: str = "") -> Dict[str, Any]:
+    """Generate a structured quote. Location is optional — do NOT ask the customer
+    for location just to generate a quote. Location is only needed later for delivery."""
     grade_key = _normalize_grade(grade)
     if not grade_key:
         return {
@@ -107,8 +108,6 @@ def generate_quote(grade: str, volume: float, location: str) -> Dict[str, Any]:
         return {"success": False, "error": "Volume must be a number greater than 0."}
 
     loc = (location or "").strip()
-    if not loc:
-        return {"success": False, "error": "Missing project location."}
 
     min_price, max_price = ALL_CONCRETE_PRICES[grade_key]
     discount_pct = _volume_discount_pct(vol)
@@ -120,9 +119,8 @@ def generate_quote(grade: str, volume: float, location: str) -> Dict[str, Any]:
     warnings: List[str] = []
     if vol < MIN_ORDER_M3:
         warnings.append(f"Minimum order is {int(MIN_ORDER_M3)} m³.")
-    return {
+    result = {
         "success": True,
-        "project_location": loc,
         "grade": grade_key,
         "volume_m3": round(vol, 2),
         "estimated_cost_rm": {"min": min_cost, "max": max_cost},
@@ -132,4 +130,7 @@ def generate_quote(grade: str, volume: float, location: str) -> Dict[str, Any]:
         ),
         "warnings": warnings,
     }
+    if loc:
+        result["project_location"] = loc
+    return result
 

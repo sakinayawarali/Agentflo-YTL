@@ -1774,22 +1774,22 @@ class ADKHelper:
         # If agent included [SEND_LOCATION_PIN], fire the interactive location button now
         if _needs_location_pin:
             try:
-                from agents.helpers.route_handlers import WebhookRouter
                 tenant = (os.getenv("TENANT_ID") or "").strip().lower()
                 if tenant == "ytl":
-                    _loc_payload = {
-                        "messaging_product": "whatsapp",
-                        "to": user_id,
-                        "type": "interactive",
-                        "interactive": {
-                            "type": "location_request_message",
-                            "body": {"text": "Tap the button to share your site location."},
-                            "action": {"name": "send_location"},
-                        },
-                    }
-                    _wa_url = os.getenv("WA_GRAPH_URL") or ""
-                    _wa_token = os.getenv("WA_ACCESS_TOKEN") or ""
+                    _phone_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID") or ""
+                    _wa_token = os.getenv("WHATSAPP_ACCESS_TOKEN") or ""
+                    _wa_url = f"https://graph.facebook.com/v23.0/{_phone_id}/messages" if _phone_id else ""
                     if _wa_url and _wa_token:
+                        _loc_payload = {
+                            "messaging_product": "whatsapp",
+                            "to": user_id,
+                            "type": "interactive",
+                            "interactive": {
+                                "type": "location_request_message",
+                                "body": {"text": "Tap the button to share your site location."},
+                                "action": {"name": "send_location"},
+                            },
+                        }
                         _loc_resp = requests.post(
                             _wa_url,
                             headers={"Authorization": f"Bearer {_wa_token}", "Content-Type": "application/json"},
@@ -1803,7 +1803,9 @@ class ADKHelper:
                             except Exception:
                                 pass
                         else:
-                            logger.warning("wa.location_pin.fail", user_id=user_id, status=_loc_resp.status_code)
+                            logger.warning("wa.location_pin.fail", user_id=user_id, status=_loc_resp.status_code, body=_loc_resp.text[:200])
+                    else:
+                        logger.warning("wa.location_pin.skip_no_creds", user_id=user_id, have_phone_id=bool(_phone_id), have_token=bool(_wa_token))
             except Exception as e:
                 logger.warning("wa.location_pin.tag_trigger_error", user_id=user_id, error=str(e))
 
