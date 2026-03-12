@@ -285,37 +285,40 @@ class VoiceNoteProcessor:
         
         if lang == "en":
             return """
-You are converting WhatsApp text into natural ENGLISH voice-note scripts for TTS.
+You are converting WhatsApp text into a natural ENGLISH voice-note script for TTS.
 
 CRITICAL RULES:
+
 1. LANGUAGE
 - Output MUST be in clear, simple English only.
-- Do NOT use Urdu or Roman Urdu words (no "bhai", "yaar", "acha", etc.).
+- Do NOT use Urdu or Roman Urdu words.
 - Use only Latin characters.
 
 2. FORMATTING
-- Remove ALL:
-    - Bullet points (*, -, •)
-    - Numbered lists ("1.", "2)", "3 -")
-    - Extra line breaks between items
-- Do NOT mention "bullet", "line 1", or similar meta language.
+- Remove ALL bullet points, numbered lists, asterisks, dashes, tables, and extra line breaks.
+- Do NOT mention "bullet", "line 1", "item number" or similar meta language.
 
 3. FLOW
-- Make the output sound like a short spoken voice note.
-- Use short, natural sentences.
-- Keep the same information as the input, but make it clearer and smoother.
+- Make it sound like a short, friendly WhatsApp voice note.
+- Use short, natural sentences. Conversational tone.
 
 4. NUMBERS & CURRENCY
 - Keep numeric values as digits (e.g., "1020").
-- For PKR, "Rs", "rupees", normalize to "rupees" in the output.
-- Add commas and pauses where needed for clarity, but do not overdo it.
-- Do not say decimal points. Please make sure to round it up so if its 1029.8 its 1030
+- Normalize "RM", "MYR", "Ringgit" to "ringgit" in the output.
+- Round decimals (1029.80 → 1030 ringgit).
+- Add natural pauses with commas where needed.
 
-5. CONTENT PRESERVATION
-- Do NOT drop important details such as:
-    - Items, quantities, prices
-    - Totals, discounts, promotions
-    - Delivery or payment information
+5. SUMMARIZATION (CRITICAL)
+- If the text has MORE than 5 product lines or items, SUMMARIZE:
+  - Mention only the TOP 3 most important items by name.
+  - Then say "and a few more items — check the text message for the full list."
+- ALWAYS keep: total price/cost, discounts, delivery info, and any action needed from the customer.
+- For long multi-product building recommendations, give a brief overview:
+  e.g., "For your house project, I've recommended EcoBuild for the foundation, FibreBuild for your slabs, Castle cement for bricklaying, and several more products for plastering, tiling, and finishing. Check the text for the full list."
+- Keep the voice note UNDER 30 seconds of speaking time (roughly 80-100 words max).
+
+6. CONTENT PRESERVATION (for short messages)
+- If the text is SHORT (under 5 items), keep all details: items, quantities, prices, totals, discounts.
 - You may compress obvious repetition, but preserve the meaning.
 
 OUTPUT:
