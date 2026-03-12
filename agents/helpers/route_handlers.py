@@ -492,7 +492,7 @@ class RouteHandler:
 
             if extraction.get("error") and not payload:
                 logger.warning("invoice.extract.failed", user_id=user_id, error=extraction.get("error"))
-                response_text = "Invoice read nahin ho saki. Baraye meherbani clear photo dubara bhej dein."
+                response_text = "We couldn't read the invoice. Please send a clear photo again."
                 self.adk_helper._send_text_once(
                     user_id,
                     response_text,
@@ -510,7 +510,7 @@ class RouteHandler:
                 )
                 human_missing = ", ".join(missing)
                 response_text = (
-                    f"Invoice ki kuch details nahi mil saki ({human_missing}). Baraye meherbani clear photo dubara bhej dein."
+                    f"Some invoice details could not be read ({human_missing}). Please send a clearer photo."
                 )
                 self.adk_helper._send_text_once(
                     user_id,
@@ -572,10 +572,10 @@ class RouteHandler:
                 )
                 logger.info("invoice.verify.name_capture_started", user_id=user_id)
 
-                success_text = "Shukriya! Aapki invoice verify ho gai hai!"
+                success_text = "Thank you! Your invoice has been verified!"
                 name_capture_text = (
-                    "Baraye meherbani *apna poora naam likh dein* "
-                    "takay main save kar loon."
+                    "Please *type your full name* "
+                    "so I can save it to your profile."
                 )
                 self.adk_helper._send_text_once(
                     user_id,
@@ -604,7 +604,7 @@ class RouteHandler:
             )
             # Custom handling for missing store code
             if "store code is required" in reason.lower():
-                response_text = "Dubara clear photo bhejain invoice ki; store code nahi mila."
+                response_text = "Please send a clearer invoice photo — the store code could not be found."
             else:
                 response_text = self.adk_helper._get_onboarding_invoice_prompt()
 
@@ -618,7 +618,7 @@ class RouteHandler:
 
         except Exception as e:
             logger.warning("invoice.onboarding.unexpected_error", user_id=user_id, error=str(e))
-            response_text = "Invoice read nahin ho saki. Baraye meherbani clear photo dubara bhej dein."
+            response_text = "We couldn't read the invoice. Please send a clear photo again."
             self.adk_helper._send_text_once(
                 user_id,
                 response_text,
@@ -1421,9 +1421,9 @@ class RouteHandler:
         """
         try:
             vn_script = (
-                "acha theek hai bhai ye dekh lain meine sample invoice bhej dee hai "
-                "bilkul issi tarhan say aapne tasweer lay kr bhejni hogi takkay mein "
-                "aapka store code sahi say dekh sakoon"
+                "Alright, I've sent you a sample invoice. "
+                "Please send a clear photo of your invoice just like this "
+                "so I can read your store code correctly."
             )
             cache_key = "sample_invoice_vn_v1"
 
@@ -1498,9 +1498,9 @@ class RouteHandler:
                 return
 
             vn_script = (
-                "Aap hamare system mein verified nahi hain. "
-                "Baraye meherbani apni invoice ki clear photo bhej dein. "
-                "Sirf ek invoice ki tasveer chahiye hogi, verification ke baad aap asaani se order de sakte hain."
+                "You are not yet verified in our system. "
+                "Please send a clear photo of your invoice. "
+                "Just one invoice photo is needed — once verified, you can place orders."
             )
             cache_key = "onboarding_vn_invoice"
 
@@ -1760,12 +1760,11 @@ class RouteHandler:
         Returns True if the flow handled this message (caller should `continue`).
         """
         _NAME_CHANGE_TRIGGERS = [
-            "naam change", "naam badal", "apna naam", "mera naam",
-            "name change", "naam update", "naam edit",
+            "name change", "change name", "update name", "edit name",
+            "my name",
         ]
         _CONFIRM_UNCHANGED = {
-            "haan", "han", "ji", "sahi", "theek", "ok", "okay",
-            "yes", "correct", "bilkul", "ha", "haa",
+            "ok", "okay", "yes", "correct", "yep", "yup", "sure", "right",
         }
 
         def _clean_known_name(val: Optional[str]) -> Optional[str]:
@@ -1788,10 +1787,10 @@ class RouteHandler:
             if not parts or len(parts) > 3:
                 return False
             blocked = {
-                "catalog", "order", "cart", "checkout", "confirm", "place", "bhejo", "send",
+                "catalog", "order", "cart", "checkout", "confirm", "place", "send",
                 "price", "rate", "promotion", "offer", "invoice", "help",
-                "hello", "hi", "salam", "assalam", "aoa", "bro", "bhai",
-                "madam", "sir", "yes", "no", "ok", "okay", "theek", "sahi",
+                "hello", "hi", "hey",
+                "madam", "sir", "yes", "no", "ok", "okay", "sure", "right",
             }
             if any(p.lower() in blocked for p in parts):
                 return False
@@ -1820,13 +1819,13 @@ class RouteHandler:
 
             if current_name:
                 prompt_msg = (
-                    f"System mein aapka ye naam aa raha hai: {current_name}. "
-                    "Ye sahi hai ya change kroon?"
+                    f"Your name on file is: {current_name}. "
+                    "Is this correct or would you like to change it?"
                 )
             else:
                 prompt_msg = (
-                    "System mein aapka koi naam stored nahi hai. "
-                    "Apna naam likhein aur main save kar deta hoon."
+                    "We don't have a name on file for you. "
+                    "Please type your name and I'll save it."
                 )
 
             self.adk_helper.set_name_change_state(
@@ -1851,7 +1850,7 @@ class RouteHandler:
         # ----------------------------------------------------------------
 
         # First: try to pull a name out of whatever they said.
-        # This handles "haan mera naam sakina nahi ahmed hai" → "Ahmed"
+        # This handles "no my name is not sakina it's ahmed" → "Ahmed"
         # as well as a plain "Ahmed Khan".
         stored_meta = self.adk_helper._get_stored_customer_metadata(user_id)
         current_name = _clean_known_name(stored_meta.get("customer_name"))
@@ -1868,7 +1867,7 @@ class RouteHandler:
             and any(w in text_l.split() for w in _CONFIRM_UNCHANGED)
         ):
             self.adk_helper.set_name_change_state(user_id, False)
-            confirm_msg = "Theek hai, naam same rakha gaya!"
+            confirm_msg = "Got it, your name has been kept the same!"
             self.adk_helper._send_text_once(
                 user_id, confirm_msg, reply_to_message_id=replied_to_id,
             )
@@ -1909,7 +1908,7 @@ class RouteHandler:
                 except Exception as e:
                     logger.warning("name_capture.catalog_send_failed", user_id=user_id, error=str(e))
 
-                greet_msg = f"Assalamualaikum {new_name} bhai, ab aap order laga sakte hain!"
+                greet_msg = f"Welcome {new_name}! You're all set — you can now place orders."
                 self.adk_helper._send_text_once(
                     user_id, greet_msg, reply_to_message_id=replied_to_id,
                 )
@@ -1922,7 +1921,7 @@ class RouteHandler:
                     }
                 )
             else:
-                confirm_msg = f"Theek hai! Aapka naam update ho gaya: {new_name}"
+                confirm_msg = f"Done! Your name has been updated to: {new_name}"
                 self.adk_helper._send_text_once(
                     user_id, confirm_msg, reply_to_message_id=replied_to_id,
                 )
@@ -1937,13 +1936,13 @@ class RouteHandler:
         # Couldn't parse anything useful — ask again
         if require_explicit_name:
             retry_msg = (
-                "Maafi, naam samajh nahi aaya. "
-                "Baraye meherbani sirf apna poora naam likhein, jaise: Ahmed Khan"
+                "Sorry, I couldn't catch your name. "
+                "Please type your full name only, for example: Ahmed Khan"
             )
         else:
             retry_msg = (
-                "Maafi, naam samajh nahi aaya. "
-                "Baraye meherbani sirf apna naam likhein, jaise: Ahmed Khan"
+                "Sorry, I couldn't catch your name. "
+                "Please type your name only, for example: Ahmed Khan"
             )
         self.adk_helper._send_text_once(
             user_id, retry_msg, reply_to_message_id=replied_to_id,
@@ -2484,7 +2483,7 @@ class RouteHandler:
                             })
                         except Exception as fallback_err:
                             logger.error("msg.text.fallback_failed", user_id=user_id, error=str(fallback_err))
-                            fallback = "Bhai thora masla ho gaya, ek dafa phir try kar lein."
+                            fallback = "Something went wrong on our end. Please try again."
                             try:
                                 self.adk_helper._send_text_once(user_id, fallback, reply_to_message_id=replied_to_id)
                             except Exception:
@@ -3281,7 +3280,7 @@ class RouteHandler:
 
                             lower_response = (agent_response or "").strip().lower()
                             if self.adk_helper._is_trivial_greeting(agent_response or "") or lower_response.startswith(
-                                ("assalam", "aoa", "salam", "hello", "hi")
+                                ("hello", "hi", "hey", "good morning", "good afternoon")
                             ):
                                 logger.warning(
                                     "webhook.order.agent_greeting_retry",
@@ -3507,7 +3506,7 @@ class RouteHandler:
                                 logger.error("flow.nfm_reply.json_error", user_id=user_id, error=str(e))
                                 self.adk_helper._send_text_once(
                                     user_id,
-                                    "Flow response parse nahi ho rahi bhai. Please try again.",
+                                    "We couldn't process the response. Please try again.",
                                     reply_to_message_id=replied_to_id,
                                 )
                                 results.append({"error": "flow_nfm_parse_error", "user_id": user_id})
@@ -3525,7 +3524,7 @@ class RouteHandler:
                             )
 
                             if confirmed is True or next_action == "place_order":
-                                synthetic_text = "haan bhai, order final hai, place kar do"
+                                synthetic_text = "yes, I'm ready — please place this order now"
                                 # YTL: after Flow-based confirmation, also prompt for site location pin.
                                 try:
                                     self._send_location_request(user_id, replied_to_id)
@@ -3573,7 +3572,7 @@ class RouteHandler:
                                 )
                                 self.adk_helper._send_text_once(
                                     user_id,
-                                    "Flow se confirmation clear nahi aa rahi bhai.",
+                                    "The confirmation couldn't be processed. Please try again.",
                                     reply_to_message_id=replied_to_id,
                                 )
                                 results.append({"error": "flow_unexpected_state", "user_id": user_id})

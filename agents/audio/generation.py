@@ -774,8 +774,16 @@ class TTSGenerator:
             - mp3_bytes: MP3 fallback (if available)
         """
         if not text or not text.strip():
+            logger.warning("tts.generate_audio.empty_text")
             return None, {}, None
-        
+
+        if not self.eleven_api_key:
+            logger.error("tts.generate_audio.no_api_key — ELEVENLABS_API_KEY is not set")
+            return None, {}, None
+        if not self.eleven_voice_id:
+            logger.error("tts.generate_audio.no_voice_id — ELEVENLABS_VOICE_ID is not set")
+            return None, {}, None
+
         start_ts = time.perf_counter()
         deadline_ts = start_ts + self.tts_global_deadline_sec
         time_left = deadline_ts - time.perf_counter()

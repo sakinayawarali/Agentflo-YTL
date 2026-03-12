@@ -53,8 +53,6 @@ from agents.audio.utils import (
     trim_trailing_silence,
     sniff_audio_mime,
     is_audio_too_small,
-    int_to_urdu_words,
-    number_to_urdu_words,
     clean_store_name_for_vn,
 )
 from agents.audio.greeting_cache import GreetingVNCache
@@ -64,17 +62,11 @@ TRIVIAL_GREETS = {
     "hi",
     "hello",
     "hey",
-    "salam",
-    "slam",
-    "salaam",
-    "aoa",
-    "assalam o alaikum",
-    "assalamu alaikum",
-    "asalam o alaikum",
-    "salam alaikum",
-    "slm",
     "hi there",
     "hello there",
+    "good morning",
+    "good afternoon",
+    "good evening",
 }
 
 _BARE_NUMBER_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*$")
@@ -84,24 +76,15 @@ PROJECT_USECASE_STATUS = "awaiting_project_usecase"
 
 GOODBYE_RE = re.compile(
     r"""
-    \b(
-        thanks|
-        thank\s*you|
-        shukriya|
-        bohot\s*shukriya|
-        khuda\s*hafiz|
-        khuda\s*hafis|
-        allah\s*hafiz|
-        allah\s*hafis|
-        allah\s*hafez|
+    ^\s*(
         ok\s*bye|
-        bye|
         bye\s*bye|
-        phir\s*milte\s*hain|
-        phir\s*baat\s*karte\s*hain|
-        take\s*care|
-        see\s*you
-    )\b
+        bye|
+        goodbye|
+        good\s*bye|
+        see\s*you|
+        take\s*care
+    )\s*[.!]*\s*$
     """,
     re.IGNORECASE | re.VERBOSE,
 )
@@ -165,8 +148,8 @@ class ADKHelper:
     def __init__(self):
         # surface shared handles for mixins
         self.GenerativeModel = GenerativeModel
-        # Default VN language; override to English for YTL Cement demo.
-        self.vn_language = (os.getenv("VN_LANGUAGE") or "ur").strip().lower()
+        # Default VN language; English for YTL Cement.
+        self.vn_language = (os.getenv("VN_LANGUAGE") or "en").strip().lower()
         try:
             from google import genai
             from google.genai import types
@@ -280,7 +263,7 @@ class ADKHelper:
         # Behavior (updated defaults)
         self.interjection_text = os.getenv(
             "VOICE_INTERJECTION_TEXT",
-            "rukko mein voice note mein samjhati hoon"
+            "Hold on, let me explain in a voice note"
         )
         self.interjection_enabled = str("false")
         self.voice_policy = os.getenv("VOICE_INPUT_TEXT_POLICY", "vn_or_text")
@@ -308,7 +291,7 @@ class ADKHelper:
             tenant_id=self.tenant_id,
             tts_generator=TTSGenerator(),
             vn_processor=VoiceNoteProcessor(
-                language=self.vn_language or "ur",
+                language=self.vn_language or "en",
                 genai_client=self.client,
                 model=self.model,
             ),
@@ -775,8 +758,6 @@ class ADKHelper:
 
         # Common pack phrases across supported locales.
         fixed_hints = (
-            "kya main confirm kar doon",
-            "kya yeh final order hai",
             "should i confirm this for you",
             "is this the final order",
             "ready to place this order",
@@ -789,7 +770,7 @@ class ADKHelper:
         )
         if any(hint in t for hint in fixed_hints):
             return True
-        if "haan / yes / confirm" in t or "yes / confirm" in t:
+        if "yes / confirm" in t:
             return True
         if "place" in t and "order" in t and ("ready" in t or "confirm" in t or "final" in t):
             return True
@@ -804,7 +785,7 @@ class ADKHelper:
     ) -> None:
         """
         Persist the latest order-summary + confirmation prompt messages so
-        affirmative replies (yes/haan/confirm) can be interpreted correctly.
+        affirmative replies (yes/confirm) can be interpreted correctly.
         """
         clean_messages = [
             str(m).strip()
@@ -888,7 +869,7 @@ class ADKHelper:
 
         lines: List[str] = [
             "A pending order confirmation prompt was already sent to the user.",
-            "Treat simple affirmations (yes/haan/confirm/ok/final) as confirmation for this exact pending draft.",
+            "Treat simple affirmations (yes/confirm/ok/final) as confirmation for this exact pending draft.",
             "If user says no/edit/change, do not place order and continue cart-edit flow.",
         ]
         source = pending.get("source")
@@ -1079,9 +1060,9 @@ class ADKHelper:
         # 2) Heuristic fallback: first capitalised word(s) not in a stop-list
         # ------------------------------------------------------------------
         _STOP = {
-            "mera", "naam", "hai", "haan", "ji", "ok", "okay", "sahi", "theek",
-            "change", "badal", "karo", "kar", "do", "rakh", "rakho", "nahi",
-            "aur", "wala", "bhai", "bro", "yes", "no", "naam", "apna",
+            "ok", "okay", "yes", "no", "sure", "right",
+            "change", "update", "keep",
+            "bro",
             "my", "name", "is", "its", "it's", "i", "am", "this", "that",
         }
         words = text.strip().split()
@@ -1133,9 +1114,9 @@ class ADKHelper:
 
     def _get_onboarding_invoice_prompt(self, *, step: int = 1) -> str:
         return (
-            "Aap hamare system mein verified nahi hain.\n"
-            "Baraye meherbani apni invoice ki clear photo bhej dein .\n"
-            "Sirf ek invoice ki tasveer chahiye hogi; verification ke baad aap order de sakte hain."
+            "You are not yet verified in our system.\n"
+            "Please send a clear photo of your invoice.\n"
+            "Just one invoice photo is needed — once verified, you can place orders."
         )
 
     def _was_order_placed(self, agent_text: str, session_state: dict) -> bool:
@@ -1163,8 +1144,8 @@ class ADKHelper:
             "order has been placed", 
             "invoice generated", 
             "invoice has been generated",
-            "shukriya, order confirm", 
-            "thank you, order confirm"
+            "thank you, order confirm",
+            "order confirmed"
         ]
         
         return any(phrase in text for phrase in success_phrases)
@@ -1577,7 +1558,7 @@ class ADKHelper:
 
             # Resolve effective language for this VN
             regional_enabled = os.getenv("VN_REGIONAL_LANG_ENABLED", "false").lower() == "true"
-            effective_lang = (vn_lang_code or "ur") if regional_enabled else "ur"
+            effective_lang = (vn_lang_code or "en") if regional_enabled else "en"
             logger.info(
                 "vn.lang.resolved",
                 user_id=to_number,
@@ -1699,14 +1680,75 @@ class ADKHelper:
                         pass
                     return
 
-            logger.warning("TTS failed", user_id=to_number)
-            raise
+            # Last-resort: direct MP3 call before giving up to text
+            logger.warning("TTS primary+fallback returned nothing, trying direct MP3", user_id=to_number)
+            try:
+                last_resort_mp3 = await self._direct_mp3_lastresort(tts_text)
+                if last_resort_mp3:
+                    sent = await self._upload_and_send_audio(
+                        to_number,
+                        last_resort_mp3,
+                        voice=False,
+                        mp3=True,
+                        meta={"mime": "audio/mpeg", "path": "last_resort_mp3"},
+                        reply_to_message_id=reply_to_message_id,
+                        inbound_key=inbound_key,
+                    )
+                    if sent:
+                        logger.info("audio.sent.ok (last_resort_mp3)", user_id=to_number)
+                        self._outbox_mark_sent(to_number, inbound_key)
+                        return
+            except Exception as lr_err:
+                logger.warning("last_resort_mp3.failed", user_id=to_number, error=str(lr_err))
+
+            logger.warning("TTS failed completely, falling back to text", user_id=to_number)
+            self._send_text_once(to_number, text, reply_to_message_id=reply_to_message_id)
+            self._outbox_mark_sent(to_number, inbound_key)
         except Exception as e:
             logger.error("vn.error -> text fallback", error=str(e), user_id=to_number)
             self._send_text_once(to_number, text, reply_to_message_id=reply_to_message_id)
             self._outbox_mark_sent(to_number, inbound_key)
         finally:
             self._release_voice_lock(to_number)
+
+    async def _direct_mp3_lastresort(self, text: str) -> Optional[bytes]:
+        """
+        Standalone last-resort MP3 generation — bypasses TTSGenerator entirely.
+        Uses a fresh HTTP call to ElevenLabs with minimal config.
+        """
+        api_key = os.getenv("ELEVENLABS_API_KEY", "")
+        voice_id = os.getenv("ELEVENLABS_VOICE_ID", "")
+        if not api_key or not voice_id:
+            logger.warning("last_resort_mp3.missing_config", has_key=bool(api_key), has_voice=bool(voice_id))
+            return None
+
+        def _call():
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+            payload = {
+                "text": text[:5000],
+                "model_id": os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2_5"),
+                "voice_settings": {
+                    "stability": 0.5,
+                    "similarity_boost": 0.75,
+                    "style": 0.0,
+                    "use_speaker_boost": True,
+                    "speed": 1.12,
+                },
+                "output_format": "mp3_22050_32",
+            }
+            headers = {
+                "xi-api-key": api_key,
+                "Accept": "audio/mpeg",
+                "Content-Type": "application/json",
+            }
+            import json as _json
+            r = requests.post(url, headers=headers, data=_json.dumps(payload), timeout=15)
+            r.raise_for_status()
+            if r.content and len(r.content) > 500:
+                return r.content
+            return None
+
+        return await asyncio.to_thread(_call)
 
     # ---------- VN (or fallback audio/text) ----------
     async def _send_text_then_optional_vn_then_finalize(
@@ -1828,7 +1870,7 @@ class ADKHelper:
         vn_script = combined_text or agent_text
 
         # Persist explicit order-confirmation prompts sent by the assistant so
-        # next-turn "yes/haan/confirm" replies resolve against the pending draft.
+        # next-turn "yes/confirm" replies resolve against the pending draft.
         try:
             self.remember_order_confirmation_context(
                 user_id,
@@ -2697,8 +2739,7 @@ class ADKHelper:
         - Returns False if ALL chunks were skipped or failed (previously could return True even if nothing sent).
 
         If reply_to_message_id is provided, first chunk is sent as a quoted reply.
-        Also normalizes forbidden wording like 'system mein nahi mil raha'
-        → 'ye mere paas nahi hai'.
+        Also normalizes forbidden wording like 'not found in system'.
         """
         if not message_body:
             return False
@@ -3597,8 +3638,7 @@ class ADKHelper:
         alias = r"(?:piece|pieces|packet|packets|pack|packs|pc|pcs)"
         order_hint = (
             r"\b("
-            r"order|orders|add|added|buy|qty|quantity|cart|draft|confirm|place|"
-            r"kardo|kar do|kar doon|kar dun|dal do|daal do|bhej|send|chahiye|chahye|mangwa|mangwao"
+            r"order|orders|add|added|buy|qty|quantity|cart|draft|confirm|place|send"
             r")\b"
         )
         if re.search(rf"^\d+\s*{alias}$", t):
@@ -3609,10 +3649,10 @@ class ADKHelper:
         # Informational packaging questions should remain in piece/box terms.
         if re.search(r"\bpieces?\s*(?:in|per)\s*(?:a\s+)?(?:box|boxes|carton|cartons)\b", t):
             return False
-        if re.search(r"\b(?:box|boxes|carton|cartons)\s*(?:mein|me|main|per)\b.*\bpieces?\b", t):
+        if re.search(r"\b(?:box|boxes|carton|cartons)\s*(?:per)\b.*\bpieces?\b", t):
             return False
 
-        if re.search(rf"\b(kitna|kitne|how many|qty|quantity)\b.*\b{alias}\b", t) and re.search(order_hint, t):
+        if re.search(rf"\b(how many|qty|quantity)\b.*\b{alias}\b", t) and re.search(order_hint, t):
             return True
         return False
 
@@ -3628,19 +3668,13 @@ class ADKHelper:
             flags=re.IGNORECASE,
         )
         normalized = re.sub(
-            r"\bkitne\s+(?:packs?|packets?|pieces?|pcs?)\b",
-            "kitne boxes",
-            normalized,
-            flags=re.IGNORECASE,
-        )
-        normalized = re.sub(
             r"\bhow many\s+(?:packs?|packets?|pieces?|pcs?)\b",
             lambda m: "How many boxes" if m.group(0)[:1].isupper() else "how many boxes",
             normalized,
             flags=re.IGNORECASE,
         )
         normalized = re.sub(
-            r"\b(?P<num>\d+)\s*(?:pieces?|packs?|packets?|pcs?)\b(?P<tail>\s*(?:ka|ki|ke)?\s*(?:order|orders|qty|quantity|add|added|kardo|kar do|kar doon|kar dun|dal do|daal do|cart|draft|confirm|place))",
+            r"\b(?P<num>\d+)\s*(?:pieces?|packs?|packets?|pcs?)\b(?P<tail>\s*(?:order|orders|qty|quantity|add|added|cart|draft|confirm|place))",
             lambda m: f"{m.group('num')} boxes{m.group('tail')}",
             normalized,
             flags=re.IGNORECASE,
@@ -3676,38 +3710,12 @@ class ADKHelper:
 
     def _personalize_customer_addressing(self, text: str, *, user_id: str) -> str:
         """
-        Add light first-name addressing in high-signal Urdu confirmations.
+        Add light first-name addressing in high-signal confirmations.
         Keep this sparse for natural tone (at most once per message).
         """
         if not text:
             return text
-        first_name = self._get_customer_first_name(user_id)
-        if not first_name:
-            return text
-
-        out = text
-        if re.search(rf"\b{re.escape(first_name)}\b", out, flags=re.IGNORECASE):
-            return out
-
-        # Example target: "Kya main confirm kar doon bhai?" -> "Kya main confirm kar doon Musab bhai?"
-        out2 = re.sub(
-            r"\b(kya\s+main\s+confirm\s+kar\s+d(?:o|oon|un))\s+bhai\b",
-            lambda m: f"{m.group(1)} {first_name} bhai",
-            out,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-        if out2 != out:
-            return out2
-
-        out2 = re.sub(
-            r"\b(order\s+confirm\s+kar\s+d(?:o|oon|un))\s+bhai\b",
-            lambda m: f"{m.group(1)} {first_name} bhai",
-            out,
-            count=1,
-            flags=re.IGNORECASE,
-        )
-        return out2
+        return text
 
     def _sanitize_customer_visible_text(self, text: Any, *, user_id: str) -> str:
         if not isinstance(text, str):
@@ -3747,11 +3755,9 @@ class ADKHelper:
             "pick",
             "quantity",
             "qty",
-            "konsa",
-            "kaunsa",
-            "kis",
-            "kitna",
-            "kitne",
+            "which one",
+            "how much",
+            "how many",
         )
         return any(h in t for h in hints)
 
@@ -3772,21 +3778,18 @@ class ADKHelper:
     # ---------- Misc ----------
     def _clean_system_phrase(self, text: str) -> str:
         """
-        Normalize any 'system mein nahi mil raha' style phrases to
-        'ye mere paas nahi hai', for both text and VN.
+        Normalize any 'not found in system' style phrases to a friendlier alternative.
         """
         if not text:
             return text
 
         patterns = [
-            r"system\s*mein\s*nahi\s*mil\s*raha",
-            r"system\s*me\s*nahi\s*mil\s*raha",
-            r"system\s*mein\s*nahi\s*mil\s*rahi",
-            r"system\s*me\s*nahi\s*mil\s*rahi",
+            r"not\s+found\s+in\s+(?:the\s+)?system",
+            r"not\s+available\s+in\s+(?:the\s+)?system",
         ]
 
         for pat in patterns:
-            text = re.sub(pat, "ye mere paas nahi hai", text, flags=re.IGNORECASE)
+            text = re.sub(pat, "not available at the moment", text, flags=re.IGNORECASE)
 
         return self._normalize_order_unit_terms(text)
 
@@ -3940,9 +3943,9 @@ class ADKHelper:
             "product list", "productlist",
             "price list", "pricelist",
             "rate list", "ratelist",
-            "rate bhej", "rates bhej",
-            "list bhej", "list send",
-            "catalog bhej", "catalog send",
+            "send rates", "send rate list",
+            "send list", "list send",
+            "send catalog", "catalog send",
             "product catalogue", "product catalog",
             "items ki list", "items ka list",
             "all products", "all items", "full catalog", "full catalogue",

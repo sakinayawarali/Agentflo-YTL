@@ -59,7 +59,7 @@ class GreetingVNCache:
         if vn_processor:
             self.vn_processor = vn_processor
         elif _VoiceNoteProcessor:
-            self.vn_processor = _VoiceNoteProcessor(language="ur")
+            self.vn_processor = _VoiceNoteProcessor(language="en")
         else:
             raise RuntimeError("VoiceNoteProcessor not available - cannot create GreetingVNCache")
 
