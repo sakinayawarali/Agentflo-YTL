@@ -49,15 +49,17 @@ from agents.helpers.inbound_store import InboundStore  # <-- NEW
 _ASKS_LOCATION_RE = re.compile(
     r"("
     r"delivery location|site location|project location|location pin|location so i can"
-    r"|share your location|send your location|share.*pin|provide.*location"
+    r"|share your.{0,15}location|send your.{0,15}location|share.*pin|provide.*location"
     r"|where.{0,30}deliver|where.{0,30}project|where.{0,30}site|where.{0,30}located"
     r"|need.{0,30}location|need.{0,30}address|need.{0,30}pin"
     r"|check.{0,30}deliver|check.{0,30}nearest.{0,30}plant"
     r"|tap.{0,20}button.{0,20}location|tap.{0,20}location"
-    r"|send.{0,20}pin|drop.{0,20}pin|share.{0,20}location"
+    r"|send.{0,20}pin|drop.{0,20}pin"
     r"|delivery address|site address|project address"
     r"|which.{0,20}area|what.{0,20}area.{0,20}deliver"
     r"|nearest.{0,20}plant|closest.{0,20}plant"
+    r"|tapping.{0,20}button.{0,20}below"
+    r"|share.{0,20}site.{0,20}location"
     r"|\[SEND_LOCATION_PIN\]"
     r")",
     re.IGNORECASE,

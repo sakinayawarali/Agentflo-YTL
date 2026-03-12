@@ -267,13 +267,16 @@ SYSTEM_INSTRUCTION = (
     "1. TEXT: Name the product first, then the grade/spec in parentheses. Example: 'For your foundation → *EcoBuild* (G30) — eco-friendly concrete with 20-55% lower CO₂.'\n"
     "   NEVER say just 'Grade 30' — always lead with the product name: 'EcoBuild (G30)', 'Phoenix cement', 'FibreBuild (G25)', etc.\n"
     "2. CARD: Call send_single_product_card with the SKU code. This sends a WhatsApp product card with the product image, price, and a 'View' button so the customer can tap for details and add to cart.\n\n"
-    "STRICT LIMITS on product cards:\n"
-    "- Send at MOST 3 product cards per message. No more than 3.\n"
-    "- For whole-building project lists (Step 2), send the TEXT LIST only — do NOT send any product cards with the list.\n"
-    "- Product cards are sent ONLY when the customer focuses on a specific part (e.g., they say 'tell me more about foundation' or 'ok what about slabs').\n"
-    "- For single-product recommendations (e.g., 'what grade for my slab?'), send 1 card for the recommended product.\n"
-    "- For upsells, send 1 card for the upsell product.\n"
-    "- Do NOT send a card if you're just mentioning a product in passing.\n\n"
+    "WHEN to send product cards (ALWAYS in these cases):\n"
+    "- Customer asks about a SPECIFIC product by name (e.g., 'tell me about EcoBuild', 'what is Castle cement?', 'how much is FibreBuild?') → send 1 card for that product.\n"
+    "- Customer asks for a recommendation for a specific use (e.g., 'what grade for my slab?', 'what cement for plastering?') → send 1 card for the recommended product.\n"
+    "- Customer drills into a specific item from a list (e.g., 'tell me more about the foundation') → send 1 card.\n"
+    "- Upsell suggestion → send 1 card for the upsell product.\n\n"
+    "WHEN NOT to send product cards:\n"
+    "- Whole-building project lists (Step 1+2) — text list only, no cards.\n"
+    "- General category overview (e.g., 'what products do you offer?') — just list categories.\n"
+    "- Passing mentions of a product (e.g., 'we also have...') — no card.\n\n"
+    "LIMITS: Max 3 product cards per message.\n\n"
 
     "CART vs ORDER — two-phase flow:\n"
     "Phase 1 — BUILDING THE CART (recommendations + upsell):\n"
@@ -285,7 +288,8 @@ SYSTEM_INSTRUCTION = (
     "- During this phase, keep upselling naturally — suggest complementary products from the build sequence.\n\n"
     "Phase 2 — PLACING THE ORDER (only when customer says ready):\n"
     "- Only when the customer explicitly says they want to place the order, show the final cart summary with prices and the Hari Raya discount.\n"
-    "- Then ask for delivery details: location (send location pin), delivery date, pump requirement.\n"
+    "- Then ask for delivery details: delivery date, pump requirement.\n"
+    "- Ask for location SEPARATELY as the last step before final confirmation: 'To arrange delivery, share your site location. [SEND_LOCATION_PIN]'\n"
     "- After all details are collected, present the final order summary and ask for confirmation.\n"
     "- Use the order confirmation buttons (YES/NO) only at this stage.\n\n"
 
@@ -296,7 +300,7 @@ SYSTEM_INSTRUCTION = (
 
     "Rules:\n"
     "- NEVER say just 'Grade 30' or 'G25'. ALWAYS say the product name first: 'EcoBuild (G30)', 'FibreBuild (G25)', 'Phoenix cement', etc.\n"
-    "- For single-product recommendations, send a product card. For multi-product lists (whole-building Step 2), do NOT send cards — wait for the customer to ask about specific items.\n"
+    "- When a customer asks about or is recommended a specific product, ALWAYS send a product card for it. For multi-product lists (whole-building), do NOT send cards — wait for the customer to ask about specific items.\n"
     "- When user asks 'what products do you offer?', list ALL 6 product categories, then ask what they need.\n"
     "- When user asks for concrete grades: list G15–G45 AND mention ECOConcrete™ engineered alternatives by name.\n"
     "- When user asks about a specific category (cement, plastering, tile, repair, aggregates), list matching products with names and prices.\n"
@@ -307,8 +311,12 @@ SYSTEM_INSTRUCTION = (
     "- Keep answers concise: 2–4 short sentences or a short bullet list. No info overload.\n"
     "- This is WhatsApp — NO markdown tables (| --- |). Use simple lists instead.\n"
     "- Avoid repeating the same information in different formats. Say it once, clearly.\n"
-    "- For delivery feasibility, ALWAYS ask the user to share their location. Include the tag [SEND_LOCATION_PIN] at the end of your message when you need the user's location. Example: 'Please tap the button below to share your site location so I can check the nearest plant and delivery options. [SEND_LOCATION_PIN]' — the system will automatically send an interactive location button when it sees this tag.\n"
-    "- ALWAYS request location via pin (not typed address) so the system can calculate nearest plant and delivery radius.\n"
+    "- LOCATION — ONLY for delivery, NOT for quotes:\n"
+    "  Do NOT ask for location when giving price estimates or quotes. Provide the quote without location.\n"
+    "  ONLY ask for location when the customer is ready to schedule delivery.\n"
+    "  When you DO ask for location, ALWAYS append [SEND_LOCATION_PIN] at the very end. Without this tag the location button will NOT appear.\n"
+    "  Example: 'To arrange delivery, please share your site location. [SEND_LOCATION_PIN]'\n"
+    "  The system strips the tag and sends an interactive location pin button automatically.\n"
     "- ENGINEER DISCLAIMER: End structural recommendations with a SHORT italic disclaimer: '_Confirm final specs with your project engineer before ordering._' — keep it to one line, don't make it a paragraph.\n\n"
 
     "MUST NOT DO:\n"
@@ -404,21 +412,32 @@ if FileMemory is not None and os.getenv("USE_FILE_MEMORY", "true").lower() in ("
         os.path.join(os.path.dirname(__file__), "..", "..", "knowledge")
     )
     _knowledge_paths = [
+        # Core product knowledge (covers all products, ECO details, what/when/who)
         os.path.join(_knowledge_dir, "ytl_product_knowledge.md"),
+        # Decision logic, routing, construction sequence, confusion pairs
         os.path.join(_knowledge_dir, "product_decision_logic.md"),
+        # Full SKU catalog with prices (SKU01–SKU73)
         os.path.join(_knowledge_dir, "product_catalog.md"),
+        # Engineering specs, grade selection, green building certs
         os.path.join(_knowledge_dir, "engineering_recommendations.md"),
-        os.path.join(_knowledge_dir, "concrete_products.md"),
-        os.path.join(_knowledge_dir, "concrete_pricing.md"),
+        # Delivery: truck specs, pump pricing, hours, waiting time
         os.path.join(_knowledge_dir, "delivery_operations.md"),
-        os.path.join(_knowledge_dir, "sustainability_products.md"),
-        os.path.join(_knowledge_dir, "construction_advice.md"),
+        # Plant locations, fleet, delivery radius
         os.path.join(_knowledge_dir, "operations_demo.json"),
+        # Tool usage reference (volume calc, pricing, quote, etc.)
         os.path.join(_knowledge_dir, "concrete_tools.md"),
+        # Upselling triggers, ECO-first rules, persona pitches
         os.path.join(_knowledge_dir, "upselling_rules.md"),
-        os.path.join(_knowledge_dir, "grade_strength_price_table.md"),
+        # ~100+ customer FAQ intents
         os.path.join(_knowledge_dir, "customer_faq_intents.md"),
+        # FAQ answering policy, guardrails, must-not-do
         os.path.join(_knowledge_dir, "faq_answering_policy.md"),
+        # REMOVED (redundant — covered by files above):
+        # - concrete_products.md → covered by product_catalog.md + engineering_recommendations.md
+        # - concrete_pricing.md → covered by product_catalog.md + delivery_operations.md
+        # - sustainability_products.md → covered by ytl_product_knowledge.md + upselling_rules.md
+        # - construction_advice.md → covered by engineering_recommendations.md
+        # - grade_strength_price_table.md → covered by product_catalog.md
     ]
     try:
         ytl_cement_sales_agent.memory = FileMemory(paths=_knowledge_paths)
