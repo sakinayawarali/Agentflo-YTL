@@ -1302,6 +1302,10 @@ class ADKHelper:
                 m = _BARE_NUMBER_RE.match(message or "")
                 if m:
                     message = f"I need {m.group(1)} m³ of ready-mix concrete."
+            elif expected == "area":
+                m = _BARE_NUMBER_RE.match(message or "")
+                if m:
+                    message = f"The total built-up area is {m.group(1)} square feet."
 
             if self._is_product_overview_intent(message):
                 # Ask the project question first (best UX).
@@ -1382,10 +1386,14 @@ class ADKHelper:
                 await self.save_and_create_new_session(wa_user_id, session_id)
                 return response
 
-            # --- 8. CALL AGENT ---
+            # --- 8. CALL AGENT (with 1 retry on empty) ---
             agent_response = await self._call_agent_text_only(message, wa_user_id, session_id)
+            if not agent_response or agent_response == CUSTOMER_SAFE_FALLBACK_TEXT:
+                logger.warning("agent.empty_response.retrying", user_id=wa_user_id, session_id=session_id)
+                await asyncio.sleep(1)
+                agent_response = await self._call_agent_text_only(message, wa_user_id, session_id)
             if not agent_response:
-                raise ValueError("Agent response is empty.")
+                raise ValueError("Agent response is empty after retry.")
 
             agent_response = await self._send_text_then_optional_vn_then_finalize(
                 wa_user_id,
@@ -1744,6 +1752,13 @@ class ADKHelper:
         # Detect [SEND_LOCATION_PIN] tag before stripping — triggers location button
         _raw_text = " ".join(messages)
         _needs_location_pin = bool(re.search(r"\[SEND_LOCATION_PIN\]", _raw_text))
+
+        # If agent asks for built-up area, set expectation so a bare number reply is interpreted as area
+        if re.search(r"built.?up area|total area|floor area|project area|area .{0,20}(sq|square)", _raw_text, re.IGNORECASE):
+            try:
+                self.session_helper.set_expected_reply(user_id, "area")
+            except Exception:
+                pass
         # Strip the internal tag so the user never sees it
         messages = [re.sub(r"\s*\[SEND_LOCATION_PIN\]\s*", "", m).strip() for m in messages]
         messages = [m for m in messages if m]
@@ -3707,6 +3722,8 @@ class ADKHelper:
                 preview=candidate[:500],
             )
             return CUSTOMER_SAFE_FALLBACK_TEXT
+        # Convert markdown bold (**text**) to WhatsApp bold (*text*)
+        candidate = re.sub(r'\*\*(.+?)\*\*', r'*\1*', candidate)
         normalized = self._normalize_order_unit_terms(candidate)
         return self._personalize_customer_addressing(normalized, user_id=user_id)
 
