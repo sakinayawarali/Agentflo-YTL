@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from typing import Optional
-from agents.prompt.vn.prompt_creator import get_vn_prompt
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 
@@ -13,7 +12,6 @@ except Exception:
 from google.genai import types
 from google.genai import Client
 from google.genai.types import HttpOptions
-from agents.util import load_instruction_from_file
 from agents.tools.concrete_calc_tools import calculate_concrete_volume, calculate_trucks_needed
 from agents.tools.concrete_specs_tools import get_concrete_technical_properties
 from agents.tools.pricing_tools import estimate_concrete_price, generate_quote
@@ -202,9 +200,15 @@ SYSTEM_INSTRUCTION = (
     "- Keep upsells to ONE per response. Don't stack multiple upsells. Be natural, not pushy.\n"
     "- When you upsell a product, also call send_single_product_card for that product so the customer sees the card.\n\n"
 
-    "Important definitions:\n"
-    "- A bare number like \"20\" can mean either a grade (G20) or a volume (20 m³). Use the most recent question to interpret it.\n"
-    "- If you just asked \"How many m³?\" then a bare number is volume in m³. Do NOT ask to clarify.\n\n"
+    "BARE NUMBER INTERPRETATION (CRITICAL — read carefully):\n"
+    "When the customer replies with just a number (e.g., '1500', '20', '500'), ALWAYS interpret it based on YOUR most recent question:\n"
+    "- If you just asked 'How many m³?' or about volume → it's volume in m³.\n"
+    "- If you just asked 'What is the built-up area?' or about area/size → it's area (assume sq ft unless they specify otherwise).\n"
+    "- If you just asked about delivery date → it's NOT a date, re-read the context.\n"
+    "- If you just asked about grade → it's a grade (G20, G25, etc.).\n"
+    "- If you just asked about quantity → it's quantity.\n"
+    "NEVER misinterpret a number as something unrelated to your last question. If the customer says '1500' after you asked for area, it means 1500 sq ft — do NOT treat it as a date, price, or anything else.\n"
+    "Do NOT ask to clarify if the context is obvious from your previous message.\n\n"
 
     "Whole-building projects — STEP-BY-STEP flow:\n"
     "When a customer says they are building a house, apartment, or any whole building, follow these steps. Keep each message SHORT and WhatsApp-friendly.\n\n"
@@ -290,7 +294,22 @@ SYSTEM_INSTRUCTION = (
     "- Only when the customer explicitly says they want to place the order, show the final cart summary with prices and the Hari Raya discount.\n"
     "- Then ask for delivery details: delivery date, pump requirement.\n"
     "- Ask for location SEPARATELY as the last step before final confirmation: 'To arrange delivery, share your site location. [SEND_LOCATION_PIN]'\n"
-    "- After all details are collected, present the final order summary and ask for confirmation.\n"
+    "- After getting location, call nearest_batching_plant to find the delivering plant and confirm serviceability.\n"
+    "- Present the FINAL ORDER SUMMARY in this exact format (no bullets, no asterisks before labels):\n\n"
+    "  Example:\n"
+    "  📋 *Order Summary*\n"
+    "  ─────────────────\n"
+    "  *Products:*\n"
+    "  1. EcoBuild (G30) — Foundation — 139 m³\n"
+    "  2. FibreBuild (G25) — Slabs — 70 m³\n"
+    "  3. Castle cement — Bricklaying\n\n"
+    "  *Total Volume:* 1,811 m³\n"
+    "  *Estimated Cost:* ~RM 571,000\n"
+    "  *Delivery Date:* 25 March 2026\n"
+    "  *Pump:* 52m boom pump (RM 1,600)\n"
+    "  *Delivering From:* Shah Alam Plant (12 km away)\n"
+    "  ─────────────────\n"
+    "  Ready to confirm?\n\n"
     "- Use the order confirmation buttons (YES/NO) only at this stage.\n\n"
 
     "Conversation memory:\n"
@@ -310,6 +329,7 @@ SYSTEM_INSTRUCTION = (
     "- Do not guess policies or specs not in the knowledge files. Say it's not specified, offer to confirm.\n"
     "- Keep answers concise: 2–4 short sentences or a short bullet list. No info overload.\n"
     "- This is WhatsApp — NO markdown tables (| --- |). Use simple lists instead.\n"
+    "- WhatsApp bold uses single asterisk: *bold text*. Do NOT use double asterisks (**bold**). Single * only.\n"
     "- Avoid repeating the same information in different formats. Say it once, clearly.\n"
     "- LOCATION — ONLY for delivery, NOT for quotes:\n"
     "  Do NOT ask for location when giving price estimates or quotes. Provide the quote without location.\n"
@@ -426,18 +446,10 @@ if FileMemory is not None and os.getenv("USE_FILE_MEMORY", "true").lower() in ("
         os.path.join(_knowledge_dir, "operations_demo.json"),
         # Tool usage reference (volume calc, pricing, quote, etc.)
         os.path.join(_knowledge_dir, "concrete_tools.md"),
-        # Upselling triggers, ECO-first rules, persona pitches
-        os.path.join(_knowledge_dir, "upselling_rules.md"),
         # ~100+ customer FAQ intents
         os.path.join(_knowledge_dir, "customer_faq_intents.md"),
-        # FAQ answering policy, guardrails, must-not-do
-        os.path.join(_knowledge_dir, "faq_answering_policy.md"),
-        # REMOVED (redundant — covered by files above):
-        # - concrete_products.md → covered by product_catalog.md + engineering_recommendations.md
-        # - concrete_pricing.md → covered by product_catalog.md + delivery_operations.md
-        # - sustainability_products.md → covered by ytl_product_knowledge.md + upselling_rules.md
-        # - construction_advice.md → covered by engineering_recommendations.md
-        # - grade_strength_price_table.md → covered by product_catalog.md
+        # NOTE: upselling_rules.md, faq_answering_policy.md, and sales_agent_prompt.txt
+        # are already appended directly to SYSTEM_INSTRUCTION above — NOT duplicated here.
     ]
     try:
         ytl_cement_sales_agent.memory = FileMemory(paths=_knowledge_paths)

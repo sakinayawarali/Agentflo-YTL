@@ -808,20 +808,39 @@ class TTSGenerator:
             
             if result.get("success") and result.get("audio_data"):
                 audio_bytes = base64.b64decode(result["audio_data"])
+                result_mime = result.get("mime", "audio/ogg")
+                is_ogg = "ogg" in result_mime or "opus" in result_mime
                 meta = {
-                    "mime": result.get("mime", "audio/ogg"),
+                    "mime": result_mime,
                     "path": "single",
-                    "is_voice": True,
-                    "is_mp3": False,
+                    "is_voice": is_ogg,
+                    "is_mp3": not is_ogg,
                 }
-                return audio_bytes, meta, None
+                if is_ogg:
+                    return audio_bytes, meta, None
+                else:
+                    return None, {}, audio_bytes
         except Exception as e:
             logger.error(f"Single-shot TTS failed: {e}")
         
-        # MP3 fallback
+        # MP3 fallback — try to convert to OGG so it arrives as a voice note
         try:
             mp3_bytes = await self._http_mp3_fallback(text, start_ts)
             if mp3_bytes:
+                ffmpeg = _ffmpeg_bin()
+                if ffmpeg:
+                    try:
+                        wav = await asyncio.to_thread(
+                            bytes_to_wav16k_mono, mp3_bytes, ffmpeg, "mp3", timeout_sec=30
+                        )
+                        ogg = await asyncio.to_thread(
+                            wav_to_ogg_opus, wav, ffmpeg, timeout_sec=30
+                        )
+                        if ogg and len(ogg) > 500:
+                            meta = {"mime": "audio/ogg", "path": "http_mp3_to_ogg", "is_mp3": False, "is_voice": True}
+                            return ogg, meta, None
+                    except Exception as conv_err:
+                        logger.warning(f"MP3→OGG conversion failed, sending as MP3: {conv_err}")
                 meta = {"mime": "audio/mpeg", "path": "http_mp3", "is_mp3": True, "is_voice": False}
                 return None, {}, mp3_bytes
         except Exception as e:
